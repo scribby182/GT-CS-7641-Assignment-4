@@ -296,7 +296,13 @@ class BaseExperiment(ABC):
 
             stats.add(policy, v, steps, step_time, reward, delta, converged)
             step_count += 1
-        self.log('Steps: {} delta: {} converged: {}'.format(step_count, delta, converged))
+        if isinstance(solver, solvers.QLearningSolver):
+            self.log('Steps: {} delta: {} alpha_final: {} eps_final: {} converged: {}'.format(step_count, solver._alpha,
+                                                                                              solver._epsilon, delta,
+                                                                                              converged))
+        else:
+            self.log(
+                'Steps: {} delta: {} converged: {}'.format(step_count, delta, converged))
 
         stats.elapsed_time = time.clock() - t
         stats.optimal_policy = stats.policies[-1]  # optimal_policy

@@ -51,7 +51,7 @@ class PolicyIterationExperiment(BaseExperiment):
 
         grid_file_name = os.path.join(PI_DIR, '{}_grid.csv'.format(self._details.env_name))
         with open(grid_file_name, 'w') as f:
-            f.write("params,time,steps,reward_mean,reward_median,reward_min,reward_max,reward_std\n")
+            f.write("discount_factor,time,steps,reward_mean,reward_median,reward_min,reward_max,reward_std\n")
 
         dims = len(self._discount_factors)
         self.log("Searching PI in {} dimensions".format(dims))
@@ -69,17 +69,20 @@ class PolicyIterationExperiment(BaseExperiment):
 
             self.log("Took {} steps".format(len(stats.steps)))
             stats.to_csv(os.path.join(PI_DIR, '{}_{}.csv'.format(self._details.env_name, discount_factor)))
-            stats.pickle_results(os.path.join(PKL_DIR, '{}_{}_{}.pkl'.format(self._details.env_name, discount_factor, '{}')), map_desc.shape)
-            stats.plot_policies_on_map(os.path.join(IMG_DIR, '{}_{}_{}.png'.format(self._details.env_name, discount_factor, '{}_{}')),
+            stats.pickle_results(os.path.join(PKL_DIR, '{}_{}_{}.pkl'.format(self._details.env_name, discount_factor, 
+                                                                             '{}')), map_desc.shape)
+            stats.plot_policies_on_map(os.path.join(IMG_DIR, '{}_{}_{}.png'.format(self._details.env_name, 
+                                                                                   discount_factor, '{}_{}')),
                                        map_desc, self._details.env.colors(), self._details.env.directions(),
                                        'Policy Iteration', 'Step', self._details, only_last=True)
 
             optimal_policy_stats = self.run_policy_and_collect(p, stats.optimal_policy, self._num_trials)
             self.log('{}'.format(optimal_policy_stats))
-            optimal_policy_stats.to_csv(os.path.join(PI_DIR, '{}_{}_optimal.csv'.format(self._details.env_name, discount_factor)))
+            optimal_policy_stats.to_csv(os.path.join(PI_DIR, '{}_{}_optimal.csv'.format(self._details.env_name, 
+                                                                                        discount_factor)))
             with open(grid_file_name, 'a') as f:
                 f.write('"{}",{},{},{},{},{},{},{}\n'.format(
-                    json.dumps({'discount_factor': discount_factor}).replace('"', '""'),
+                    discount_factor,
                     time.clock() - t,
                     len(optimal_policy_stats.rewards),
                     optimal_policy_stats.reward_mean,

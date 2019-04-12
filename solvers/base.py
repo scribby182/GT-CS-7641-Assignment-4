@@ -23,20 +23,34 @@ class EpisodeStats(object):
         self.episode_deltas = []
         self.episode_transitions = []
 
-    def add(self, episode_length, episode_time, episode_reward, episode_delta, episode_transitions):
+        self.episode_start_epsilon = []
+        self.episode_end_epsilon = []
+        self.episode_start_alpha = []
+        self.episode_end_alpha = []
+
+    def add(self, episode_length, episode_time, episode_reward, episode_delta, episode_transitions,
+            episode_start_epsilon, episode_end_epsilon, episode_start_alpha, episode_end_alpha):
+
         self.episode_lengths.append(episode_length)
         self.episode_times.append(episode_time)
         self.episode_rewards.append(episode_reward)
         self.episode_deltas.append(episode_delta)
         self.episode_transitions.append(episode_transitions)
+        self.episode_start_epsilon.append(episode_start_epsilon)
+        self.episode_end_epsilon.append(episode_end_epsilon)
+        self.episode_start_alpha.append(episode_start_alpha)
+        self.episode_end_alpha.append(episode_end_alpha)
         self.num_episodes += 1
 
     def to_csv(self, file_name):
         with open(file_name, 'w') as f:
-            f.write("episode,length,time,reward,delta,transitions\n")
+            f.write("i_episode,length,time,reward,delta,initial_epsilon,final_epsilon,initial_alpha,final_alpha,"
+                    "episode\n")
             writer = csv.writer(f, delimiter=',')
             writer.writerows(zip(range(self.num_episodes), self.episode_lengths, self.episode_times,
-                                 self.episode_rewards, self.episode_deltas, self.episode_transitions))
+                                 self.episode_rewards, self.episode_deltas, self.episode_start_epsilon,
+                                 self.episode_end_epsilon, self.episode_start_alpha, self.episode_end_alpha,
+                                 self.episode_transitions, ))
 
     @staticmethod
     def from_df(df):
@@ -252,8 +266,8 @@ class BaseSolver(ABC):
             # Record transition (s, a, r, s').  Try to record as fully qualified transitions (tuples), but fall back to
             # indices if possible
             try:
-                this_transition = (self.env.index_to_state[state], self.env.index_to_action[action], reward,
-                                   self.env.index_to_state[next_state])
+                this_transition = (env.index_to_state[state], env.index_to_action[action], reward,
+                                   env.index_to_state[next_state])
             except AttributeError:
                 this_transition = (state, action, reward, next_state)
             transitions.append(this_transition)

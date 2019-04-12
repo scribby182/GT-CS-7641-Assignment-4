@@ -254,7 +254,7 @@ def plot_episodes(title, episodes, map_desc, color_map, direction_map,
     """
 
     if path_alpha is None:
-        path_alpha = 1.0 / len(episodes)
+        path_alpha = max(1.0 / len(episodes), 0.02)
 
     if fig is None:
         fig, ax = plt.subplots()
@@ -265,8 +265,9 @@ def plot_episodes(title, episodes, map_desc, color_map, direction_map,
     plot_map(map_desc, color_map, fig=fig)
 
     for episode in episodes:
-        fig = plot_episode(title=title, episode=episode, map_desc=map_desc, color_map=color_map, direction_map=direction_map, annotate_actions=False,
-                           annotate_velocity=False, path_alpha=path_alpha, fig=fig, plot_the_map=False)
+        fig = plot_episode(title=title, episode=episode, map_desc=map_desc, color_map=color_map,
+                           direction_map=direction_map, annotate_actions=False, annotate_velocity=False,
+                           path_alpha=path_alpha, fig=fig, plot_the_map=False)
     # TODO: WATERMARK
     return fig
 
@@ -332,7 +333,7 @@ def plot_episode(title, episode, map_desc, color_map, direction_map, annotate_ac
         y_end = transition[3][1] + 0.5
 
         # Plot the path
-        ax.plot((x, x_end), (y, y_end), '-o', color=annotation_color, alpha=path_alpha)
+        ax.plot((x, x_end), (y, y_end), '-o', color=path_color, alpha=path_alpha)
 
         if annotate_velocity:
             # Velocity is next velocity, so pull from the s-prime

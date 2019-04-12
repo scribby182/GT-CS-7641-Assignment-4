@@ -60,7 +60,7 @@ class ValueIterationExperiment(BaseExperiment):
 
         grid_file_name = os.path.join(VI_DIR, '{}_grid.csv'.format(self._details.env_name))
         with open(grid_file_name, 'w') as f:
-            f.write("params,time,steps,reward_mean,reward_median,reward_min,reward_max,reward_std\n")
+            f.write("discount_factor,time,steps,reward_mean,reward_median,reward_min,reward_max,reward_std\n")
 
         dims = len(self._discount_factors)
         self.log("Searching VI in {} dimensions".format(dims))
@@ -86,7 +86,7 @@ class ValueIterationExperiment(BaseExperiment):
             optimal_policy_stats.to_csv(os.path.join(VI_DIR, '{}_{}_optimal.csv'.format(self._details.env_name, discount_factor)))
             with open(grid_file_name, 'a') as f:
                 f.write('"{}",{},{},{},{},{},{},{}\n'.format(
-                    json.dumps({'discount_factor': discount_factor}).replace('"', '""'),
+                    discount_factor,
                     time.clock() - t,
                     len(optimal_policy_stats.rewards),
                     optimal_policy_stats.reward_mean,

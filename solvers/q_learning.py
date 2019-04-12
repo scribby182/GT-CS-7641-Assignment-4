@@ -7,18 +7,24 @@ from .base import BaseSolver, one_step_lookahead, EpisodeStats
 # Adapted from https://github.com/dennybritz/reinforcement-learning/blob/master/TD/Q-Learning%20Solution.ipynb
 class QLearningSolver(BaseSolver):
 
-    def __init__(self, env, max_episodes, min_episodes, max_steps_per_episode=500, discount_factor=1.0, alpha=0.5,
-                 epsilon=0.1, epsilon_decay=0.001, q_init=0, theta=0.0001, min_consecutive_sub_theta_episodes=10, verbose=False):
+    def __init__(self, env, max_episodes, min_episodes, max_steps_per_episode=500, discount_factor=1.0,
+                 alpha_initial=0.5, alpha_decay=False, alpha_min=0,
+                 epsilon_initial=0.1, epsilon_decay=0.001, epsilon_min=0,
+                 q_init=0, theta=0.0001, min_consecutive_sub_theta_episodes=10, verbose=False):
 
         self._env = env.unwrapped
 
         self._max_episodes = max_episodes
         self._min_episodes = min_episodes
         self._max_steps_per_episode = max_steps_per_episode
-        self._epsilon = epsilon
-        self._initial_epsilon = epsilon
+        self._epsilon = epsilon_initial
+        self._epsilon_initial = epsilon_initial
         self._epsilon_decay = epsilon_decay
-        self._alpha = alpha
+        self._epsilon_min = epsilon_min
+        self._alpha = alpha_initial
+        self._alpha_initial = alpha_initial
+        self._alpha_decay = alpha_decay
+        self._alpha_min = alpha_min
         self._discount_factor = discount_factor
         self._q_init = q_init
         self._steps = 0
@@ -26,6 +32,7 @@ class QLearningSolver(BaseSolver):
         self._last_delta = 0
         self._theta = theta
         self._stats = EpisodeStats()
+        self.n_transitions = 0
 
         # We want to wait for a few consecutive episodes to be below theta before we consider the model converged
         self._consecutive_sub_theta_episodes = 0
@@ -34,6 +41,14 @@ class QLearningSolver(BaseSolver):
         self._init_q()
 
         super(QLearningSolver, self).__init__(verbose)
+
+    def decay_alpha(self):
+        if self._alpha_decay:
+            self._alpha = max(self._alpha - self._alpha * self._alpha_decay, self._alpha_min)
+
+    def decay_epsilon(self):
+        if self._epsilon_decay:
+            self._epsilon = max(self._epsilon - self._epsilon * self._epsilon_decay, self._epsilon_min)
 
     def step(self):
         """
@@ -63,7 +78,10 @@ class QLearningSolver(BaseSolver):
 
         # One step in the environment
         total_reward = 0.0
-        episode_steps = 0
+
+        initial_epsilon = self._epsilon
+        initial_alpha = self._alpha
+
         for t in range(self._max_steps_per_episode+1):
             # Convert a tuple state into its index, if required
             if isinstance(state, tuple):
@@ -77,18 +95,19 @@ class QLearningSolver(BaseSolver):
             if isinstance(next_state, tuple):
                 next_state = self.get_environment().state_to_index[next_state]
 
-
             # TD Update
             best_next_action = np.argmax(self._Q[next_state])
             td_target = reward + self._discount_factor * self._Q[next_state, best_next_action]
             td_delta = td_target - self._Q[state, action]
             self._Q[state, action] += self._alpha * td_delta
 
-            # Decay epsilon
-            self._epsilon -= self._epsilon * self._epsilon_decay
-
             total_reward += reward
             self._last_delta = abs(self._alpha * td_delta)
+
+            # Decay epsilon and alpha
+            self.n_transitions += 1
+            self.decay_epsilon()
+            self.decay_alpha()
 
             # Record transition (s, a, r, s').  Try to record as fully qualified transitions (tuples), but fall back to
             # indices if possible
@@ -99,7 +118,6 @@ class QLearningSolver(BaseSolver):
                 this_transition = (state, action, reward, next_state)
             transitions.append(this_transition)
 
-            episode_steps += 1
             if done:
                 break
 
@@ -112,8 +130,10 @@ class QLearningSolver(BaseSolver):
 
         run_time = time.clock() - start_time
         # Update statistics for this episode
-        self._stats.add(episode_length=t, episode_time=run_time, episode_reward=total_reward,
-                        episode_delta=self._last_delta, episode_transitions=transitions)
+        self._stats.add(episode_length=t + 1, episode_time=run_time, episode_reward=total_reward,
+                        episode_delta=self._last_delta, episode_transitions=transitions,
+                        episode_start_epsilon=initial_epsilon, episode_end_epsilon=self._epsilon,
+                        episode_start_alpha=initial_alpha, episode_end_alpha=self._alpha)
 
         self._step_times.append(run_time)
 
@@ -127,7 +147,7 @@ class QLearningSolver(BaseSolver):
         self._steps = 0
         self._step_times = []
         self._last_delta = 0
-        self._epsilon = self._initial_epsilon
+        self._epsilon = self._epsilon_initial
         self._stats = EpisodeStats()
         self._consecutive_sub_theta_episodes = 0
 
