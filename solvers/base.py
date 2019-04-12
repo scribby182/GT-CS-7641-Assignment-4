@@ -197,7 +197,9 @@ class BaseSolver(ABC):
 
     def run_policy(self, policy, max_steps=MAX_STEPS, render_during=False):
         """
-        Run through the given policy. This will reset the solver's environment before running.
+        Run once through the environment using a given policy, returning a numpy array of the rewards obtained.
+        
+        Side effect: Environment will be reset prior to running
 
         :param policy: The policy to run
         :param max_steps: The total number of steps to run. This helps prevent the agent getting "stuck"

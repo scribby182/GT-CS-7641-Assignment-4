@@ -108,7 +108,7 @@ class QLearningSolver(BaseSolver):
         self._steps += 1
 
         return self.get_policy(), self.get_value(), self._steps, self._step_times[-1], \
-            total_reward/episode_steps, self._last_delta, self.has_converged()
+            total_reward, self._last_delta, self.has_converged()
 
     def reset(self):
         self._init_q()

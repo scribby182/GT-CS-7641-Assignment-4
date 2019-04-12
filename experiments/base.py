@@ -301,7 +301,7 @@ class BaseExperiment(ABC):
 
     def run_policy_and_collect(self, solver, policy, num_trials=NUM_TRIALS):
         """
-        Run a policy multiple times, returning stats containing the mean per-step reward for that policy
+        Run a policy multiple times, returning stats containing the mean per-episode reward for that policy
 
         :param solver:
         :param policy:
@@ -310,9 +310,9 @@ class BaseExperiment(ABC):
         """
         stats = EvaluationStats()
         for i in range(num_trials):
+            stats.add(np.sum(solver.run_policy(policy)))
             # TODO: Using mean reward here seems strange.  I think I'd prefer summed rewards.  But will that break something else?
-            # stats.add(np.sum(solver.run_policy(policy)))
-            stats.add(np.mean(solver.run_policy(policy)))
+            # stats.add(np.mean(solver.run_policy(policy)))
         stats.compute()
 
         return stats
