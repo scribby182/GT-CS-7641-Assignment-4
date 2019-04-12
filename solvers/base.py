@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 
 class EpisodeStats(object):
-
     def __init__(self, num_episodes):
         self.num_episodes = num_episodes
         self.episode_lengths = np.zeros(num_episodes)
@@ -50,16 +49,22 @@ def one_step_lookahead(env, discount_factor, state, v):
     Returns:
         A vector of length env.nA containing the expected value of each action.
     """
+    try:
+        action_transitions = env.P[state]
+    except KeyError:
+        action_transitions = env.P[env.index_to_state[state]]
 
-    A = np.zeros(env.nA)
-    for a in range(env.nA):
-        for prob, next_state, reward, done in env.P[state][a]:
-            A[a] += prob * (reward + discount_factor * v[next_state])
+    A = np.zeros(len(action_transitions))
+    for a_index, transitions in enumerate(action_transitions.items()):
+        for prob, next_state, reward, done in transitions[1]:
+            # If required, convert next_state back to an index for the value numpy array
+            if isinstance(next_state, tuple):
+                next_state = env.state_to_index[next_state]
+            A[a_index] += prob * (reward + discount_factor * v[next_state])
     return A
 
 
 class BaseSolver(ABC):
-
     def __init__(self, verbose=False):
         self._verbose = verbose
 
@@ -101,28 +106,27 @@ class BaseSolver(ABC):
         Returns:
             Vector of length env.nS representing the value function.
         """
-
         env = self.get_environment()
-
-        # Get start positions
-        start = 0
-        if 'nrow' in env.__dir__():
-            # Frozen Lake
-            for s in range(env.nS):
-                row = int(s / env.nrow)
-                col = s % env.ncol
-                desc = env.desc[row][col]
-                if desc == b'S':
-                    start = s
-                    break
-        else:
-            # Cliff Walking
-            for s in range(env.nS):
-                position = np.unravel_index(s, env.shape)
-                desc = env.desc[position]
-                if desc == b'S':
-                    start = s
-                    break
+# TODO: What was this for?  this block and one below it.  Couldnt understand in diff prog
+#        # Get start positions
+#        start = 0
+#        if 'nrow' in env.__dir__():
+#            # Frozen Lake
+#            for s in range(env.nS):
+#                row = int(s / env.nrow)
+#                col = s % env.ncol
+#                desc = env.desc[row][col]
+#                if desc == b'S':
+#                    start = s
+#                    break
+#        else:
+#            # Cliff Walking
+#            for s in range(env.nS):
+#                position = np.unravel_index(s, env.shape)
+#                desc = env.desc[position]
+#                if desc == b'S':
+#                    start = s
+#                    break
 
         # Get values
         V = np.zeros(env.nS) # Start with a random (all 0) value function
@@ -130,34 +134,50 @@ class BaseSolver(ABC):
         while max_steps is None or steps < max_steps:
             delta = 0
             # For each state, perform a "full backup"
-            for s in range(env.nS):
+            for i_s in range(env.nS):
                 v = 0
-                position = 0
-                desc = None
-                if 'nrow' in env.__dir__():
-                    # Frozen Lake
-                    row = int(s / env.nrow)
-                    col = s % env.ncol
-                    desc = env.desc[row][col]
-                else:
-                    # Cliff Walking
-                    position = np.unravel_index(s, env.shape)
-                    desc = env.desc[position]
-                if desc in b'GH':
-                    continue # terminating state...no "next" actions to evaluate
+# TODO: What was this for?  this block and one below it.  Couldnt understand in diff prog
+#                position = 0
+#                desc = None
+#                if 'nrow' in env.__dir__():
+#                    # Frozen Lake
+#                    row = int(s / env.nrow)
+#                    col = s % env.ncol
+#                    desc = env.desc[row][col]
+#                else:
+#                    # Cliff Walking
+#                    position = np.unravel_index(s, env.shape)
+#                    desc = env.desc[position]
+#                if desc in b'GH':
+#                    continue # terminating state...no "next" actions to evaluate
                 # Look at all possible next actions
-                for a, action_prob in enumerate(policy[s]):
+                for i_a, action_prob in enumerate(policy[i_s]):
                     # For each action, look at the possible next states...
-                    for prob, next_state, reward, done in env.P[s][a]:
-                        # Calculate the expected value
-                        if 'nrow' not in env.__dir__() and desc == b'C':
-                            # Cliff Walking cliff position; next state is starting position
-                            v = V[start]
-                            continue
-                        v += action_prob * prob * (reward + discount_factor * V[next_state])
+                    try:
+                        for prob, i_next_state, reward, done in env.P[i_s][i_a]:
+                            # Calculate the expected value
+                            # if 'nrow' not in env.__dir__() and desc == b'C':
+                            #     # Cliff Walking cliff position; next state is starting position
+                            #     v = V[start]
+                            #     continue
+                            v += action_prob * prob * (reward + discount_factor * V[i_next_state])
+                    except KeyError:
+                        # If we get KeyError, assume the environment indexes state and action by something other than
+                        # int.  convert to qualified state and action and try again
+                        qualfied_state = env.index_to_state[i_s]
+                        qualified_action = env.index_to_action[i_a]
+                        for prob, qualfied_next_state, reward, done in env.P[qualfied_state][qualified_action]:
+                            i_next_state = env.state_to_index[qualfied_next_state]
+                            # Calculate the expected value
+                            #                        if 'nrow' not in env.__dir__() and desc == b'C':
+                            #                            # Cliff Walking cliff position; next state is starting position
+                            #                            v = V[start]
+                            #                            continue
+                            v += action_prob * prob * (reward + discount_factor * V[i_next_state])
+
                 # How much the value function changed (across any states)
-                delta = max(delta, np.abs(v - V[s]))
-                V[s] = v
+                delta = max(delta, np.abs(v - V[i_s]))
+                V[i_s] = v
             steps += 1
             # Stop evaluating once our value function change is below a threshold (theta)
             if delta < theta:
@@ -166,7 +186,6 @@ class BaseSolver(ABC):
         return np.array(V)
 
     def render_policy(self, policy):
-
         env = self.get_environment()
         directions = env.directions()
         policy = np.reshape(np.argmax(policy, axis=1), env.desc.shape)
@@ -185,7 +204,6 @@ class BaseSolver(ABC):
         :param render_during: If true, render the env to stdout at each step
         :return: An ndarray of rewards for each step
         """
-
         policy = np.argmax(policy, axis=1)
 
         rewards = []
@@ -199,6 +217,13 @@ class BaseSolver(ABC):
         while not done and steps < max_steps:
             if render_during:
                 env.render()
+
+            # State can be an integer index or a tuple, depending on the environment.  Result this by catching any
+            # state variables's that are tuples and convert them to state integer indices using the environment
+            # This approach is taken rather than asking for permission because tuples can be interpreted as a numpy
+            # index, so it is possible that a tuple state could incorrectly index the policy numpy array
+            if isinstance(state, tuple):
+                state = env.state_to_index[state]
 
             action = policy[state]
             state, reward, done, info = env.step(action)
@@ -217,7 +242,6 @@ class BaseSolver(ABC):
         :param args: The arguments
         :return: None
         """
-
         if self._verbose:
             logger.info(msg.format(*args))
 

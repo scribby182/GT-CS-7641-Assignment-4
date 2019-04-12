@@ -29,7 +29,6 @@ if not os.path.exists(os.path.join(os.path.join(os.getcwd(), OUTPUT_DIR), 'image
 
 
 class EvaluationStats(object):
-
     def __init__(self):
         self.rewards = list()
         self.stat_history = list()
@@ -80,7 +79,6 @@ class EvaluationStats(object):
 
 
 class ExperimentStats(object):
-
     def __init__(self):
         self.policies = list()
         self.vs = list()
@@ -108,42 +106,112 @@ class ExperimentStats(object):
             writer.writerows(zip(self.steps, self.step_times, self.rewards, self.deltas, self.converged_values))
 
     def pickle_results(self, file_name_base, map_shape, step_size=1, only_last=False):
-        if only_last:
-            policy = np.reshape(np.argmax(self.policies[-1], axis=1), map_shape)
-            v = self.vs[-1].reshape(map_shape)
-            file_name = file_name_base.format('Last')
-            with open(file_name, 'wb') as f:
-                pickle.dump({'policy': policy, 'v': v}, f)
-        else:
-            l = len(self.policies)
-            if step_size == 1 and l > 20:
-                step_size = math.floor(l/20.0)
-            for i, policy in enumerate(self.policies):
-                if i % step_size == 0 or i == l-1:
-                    v = self.vs[i].reshape(map_shape)
-                    file_name = file_name_base.format(i)
-                    if i == l-1:
-                        file_name = file_name_base.format('Last')
-                    with open(file_name, 'wb') as f:
-                        pickle.dump({'policy': np.reshape(np.argmax(policy, axis=1), map_shape), 'v': v}, f)
+        # TODO: Fix this
+        print("RESULTS NOT PICKLED - NEED TO FIX THIS")
+        # if only_last:
+        #     policy = np.reshape(np.argmax(self.policies[-1], axis=1), map_shape)
+        #     v = self.vs[-1].reshape(map_shape)
+        #     file_name = file_name_base.format('Last')
+        #     with open(file_name, 'wb') as f:
+        #         pickle.dump({'policy': policy, 'v': v}, f)
+        # else:
+        #     l = len(self.policies)
+        #     if step_size == 1 and l > 20:
+        #         step_size = math.floor(l/20.0)
+        #     for i, policy in enumerate(self.policies):
+        #         if i % step_size == 0 or i == l-1:
+        #             v = self.vs[i].reshape(map_shape)
+        #             file_name = file_name_base.format(i)
+        #             if i == l-1:
+        #                 file_name = file_name_base.format('Last')
+        #             with open(file_name, 'wb') as f:
+        #                 pickle.dump({'policy': np.reshape(np.argmax(policy, axis=1), map_shape), 'v': v}, f)
 
     def plot_policies_on_map(self, file_name_base, map_desc, color_map, direction_map, experiment, step_preamble,
-                             details, step_size=1, only_last=False):
+                             details, step_size=1, only_last=False, extra_state_variable_prefix='v=',
+                             hide_terminal=True):
+        """
+
+        :param file_name_base:
+        :param map_desc:
+        :param color_map:
+        :param direction_map:
+        :param experiment:
+        :param step_preamble:
+        :param details:
+        :param step_size:
+        :param only_last:
+        :param extra_state_variable_prefix: Suffix to print in front of any extra state variables printed in file names
+                                            and plot titles.
+        :param hide_terminal: If True, do not print policy on any terminal location.  Else, print all locations.
+                              Only works if the environment has an env.is_terminal_location dictionary attribute.
+        :return:
+        """
+        # FEATURE: Many inputs here are included in the details argument.  Roll them up, or unroll the details argument
+        # and pass everything separately?
+        # try:
+        #     action_list = details.env.index_to_action
+        # except AttributeError:
+        #     action_list = [None]
+
+        # FEATURE: Can combine only_last and other case into the same thing no?  Just make a list of those that will
+        # be output and have an if for naming the last one differently
         if only_last:
-            policy = np.reshape(np.argmax(self.policies[-1], axis=1), map_desc.shape)
-            v = self.vs[-1].reshape(map_desc.shape)
+            # Best policy decision for each state.  Shape as (*map_shape, all possible additional state dimensions for
+            # each map location)
+            policy = np.argmax(self.policies[-1], axis=1).reshape(*map_desc.shape, -1)
+            v = self.vs[-1].reshape(*map_desc.shape, -1)
 
-            policy_file_name = file_name_base.format('Policy', 'Last')
-            value_file_name = file_name_base.format('Value', 'Last')
-            title = '{}: {} - {} {}'.format(details.env_readable_name, experiment, 'Last', step_preamble)
+            # Make a state_index that holds the index corresponding to policy[i, j, [k]].  This is useful to quickly map
+            # from an i,j back to a state in a few places below
+            # places below.
+            state_index = np.arange(0, self.policies[-1].shape[0])
+            state_index = state_index.reshape(*map_desc.shape, -1)
 
-            p = plot_policy_map(title, policy, map_desc, color_map, direction_map)
-            p.savefig(policy_file_name, format='png', dpi=150)
-            p.close()
+            # If policy.shape[2] == 1 then the state space is described entirely by the map (eg: state == location on
+            # map).  Otherwise, there are additional variables in state (such as velocity).  The first two variables are
+            # x,y, with all other variables being something else.  Plot a separate policy plot for each of these extra
+            # variable combinations.
+            for i_extra_state in range(policy.shape[2]):
+                if policy.shape[2] == 1:
+                    policy_file_name = file_name_base.format('Policy', 'Last')
+                    value_file_name = file_name_base.format('Value', 'Last')
+                    title = '{}: {} - {} {}'.format(details.env_readable_name, experiment, 'Last', step_preamble)
+                else:
+                    # Get extra state variables
+                    extra_state_variables = details.env.index_to_state[state_index[0, 0, i_extra_state]][2:]
+                    policy_file_name = file_name_base.format(
+                        f'Policy ({extra_state_variable_prefix}{str(extra_state_variables)})', 'Last')
+                    value_file_name = file_name_base.format(
+                        f'Value ({extra_state_variable_prefix}{str(extra_state_variables)})', 'Last')
+                    title = '{}: {} {} - {} {}'.format(details.env_readable_name, experiment,
+                                                       f'({extra_state_variable_prefix}{str(extra_state_variables)})',
+                                                       'Last', step_preamble)
 
-            p = plot_value_map(title, v, map_desc, color_map)
-            p.savefig(value_file_name, format='png', dpi=150)
-            p.close()
+                # Define a mask that shows only locations that are not terminal
+                mask = np.ones(policy[:, :, i_extra_state].shape)
+                if hide_terminal:
+                    for i in range(mask.shape[0]):
+                        for j in range(mask.shape[1]):
+                            # Looking for terminal location on map.  This is determined by i, j.  All k's for a
+                            # given location will be the same as terminality is an incoming property to the location
+                            try:
+                                # Use only the first two components of state, which will be x, y
+                                xy = details.env.index_to_state[state_index[i, j, 0]][:2]
+                                mask[i, j] = not details.env.is_location_terminal[xy]
+                            except AttributeError:
+                                # env does not have an is_location_terminal attribute
+                                pass
+
+                p = plot_policy_map(title, policy[:, :, i_extra_state], map_desc, color_map, direction_map,
+                                    map_mask=mask)
+                p.savefig(policy_file_name, format='png', dpi=150)
+                p.close()
+
+                p = plot_value_map(title, v[:, :, i_extra_state], map_desc, color_map, map_mask=mask)
+                p.savefig(value_file_name, format='png', dpi=150)
+                p.close()
+
         else:
             l = len(self.policies)
             if step_size == 1 and l > 20:
@@ -181,7 +249,6 @@ class ExperimentStats(object):
 
 
 class ExperimentDetails(object):
-
     def __init__(self, env, env_name, env_readable_name, threads, seed):
         self.env = env
         self.env_name = env_name
@@ -191,7 +258,6 @@ class ExperimentDetails(object):
 
 
 class BaseExperiment(ABC):
-
     def __init__(self, details, verbose=False, max_steps = MAX_STEPS):
         self._details = details
         self._verbose = verbose
@@ -234,9 +300,19 @@ class BaseExperiment(ABC):
         return stats
 
     def run_policy_and_collect(self, solver, policy, num_trials=NUM_TRIALS):
+        """
+        Run a policy multiple times, returning stats containing the mean per-step reward for that policy
+
+        :param solver:
+        :param policy:
+        :param times:
+        :return:
+        """
         stats = EvaluationStats()
         for i in range(num_trials):
-            stats.add(np.mean(solver.run_policy(policy, self._max_steps)))
+            # TODO: Using mean reward here seems strange.  I think I'd prefer summed rewards.  But will that break something else?
+            # stats.add(np.sum(solver.run_policy(policy)))
+            stats.add(np.mean(solver.run_policy(policy)))
         stats.compute()
 
         return stats

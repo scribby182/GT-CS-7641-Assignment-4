@@ -30,19 +30,30 @@ if not os.path.exists(IMG_DIR):
 
 class ValueIterationExperiment(BaseExperiment):
 
-    def __init__(self, details, verbose=False, max_steps = MAX_STEPS, num_trials = NUM_TRIALS, theta = THETA,
-                 discounts = [DISCOUNT_MIN, DISCOUNT_MAX, NUM_DISCOUNTS]):
+    def __init__(self, details, verbose=False, max_steps=MAX_STEPS, num_trials=NUM_TRIALS, theta=THETA,
+                 discount_factors=None):
+        if discount_factors is None:
+            discount_factors = np.round(np.linspace(DISCOUNT_MIN, DISCOUNT_MAX, NUM_DISCOUNTS), 2)
         super(ValueIterationExperiment, self).__init__(details, verbose, max_steps)
         self._num_trials = num_trials
         self._theta = theta
-        self._discount_min = discounts[0]
-        self._discount_max = discounts[1]
-        self._num_discounts = discounts[2]
-
+        self._discount_factors = discount_factors
+        
     def convergence_check_fn(self, solver, step_count):
         return solver.has_converged()
 
     def perform(self):
+        """
+
+        :Outputs:
+        -   OUTPUT_DIRECTORY/env_name_grid.csv
+            -   Summary of each discount factor:
+                -   Steps indicates number of full walks through the environment used to evaluate rewards
+                -   Times are for the entire simulation on this discount factor, including training time and time to do
+                    on-policy evaluation of rewards
+                -   Rewards are per-step reward (set by self.run_policy_and_collect).
+        """
+
         # Value iteration
         self._details.env.reset()
         map_desc = self._details.env.unwrapped.desc
@@ -51,13 +62,11 @@ class ValueIterationExperiment(BaseExperiment):
         with open(grid_file_name, 'w') as f:
             f.write("params,time,steps,reward_mean,reward_median,reward_min,reward_max,reward_std\n")
 
-        discount_factors = np.round(np.linspace(self._discount_min, max(self._discount_min, self._discount_max), \
-                                    num = self._num_discounts), 2)
-        dims = len(discount_factors)
+        dims = len(self._discount_factors)
         self.log("Searching VI in {} dimensions".format(dims))
 
         runs = 1
-        for discount_factor in discount_factors:
+        for discount_factor in self._discount_factors:
             t = time.clock()
             self.log("{}/{} Processing VI with discount factor {}".format(runs, dims, discount_factor))
 

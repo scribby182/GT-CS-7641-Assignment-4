@@ -49,7 +49,6 @@ TERM = 'Spring 2019'
 
 
 def watermark(p):
-
     if not WATERMARK:
         return p
 
@@ -62,7 +61,6 @@ def watermark(p):
 
 
 def plot_episode_stats(title_base, stats, smoothing_window=50):
-
     # Trim the DF down based on the episode lengths
     stats = stats[stats['length'] > 0]
 
@@ -127,14 +125,28 @@ def plot_episode_stats(title_base, stats, smoothing_window=50):
     return fig1, fig2, fig3
 
 
-def plot_policy_map(title, policy, map_desc, color_map, direction_map):
+def plot_policy_map(title, policy, map_desc, color_map, direction_map, map_mask=None):
+    """
+
+    :param title:
+    :param policy:
+    :param map_desc:
+    :param color_map:
+    :param direction_map:
+    :param map_mask: (OPTIONAL) Defines a mask in the same shape of policy that indicates which tiles should be printed.
+                     Only elements that are True will have policy printed on the tile
+    :return:
+    """
+    if map_mask is None:
+        map_mask = np.ones(policy.shape, dtype=bool)
 
     fig = plt.figure()
     ax = fig.add_subplot(111, xlim=(0, policy.shape[1]), ylim=(0, policy.shape[0]))
-    font_size = 'x-large'
-
-    if policy.shape[1] > 16:
-        font_size = 'small'
+    # FEATURE: Handle this better
+    font_size = 'xx-small'
+    # font_size = 'x-large'
+    # if policy.shape[1] > 16 or len(direction_map[0]) > 2:
+    #     font_size = 'small'
     plt.title(title)
     for i in range(policy.shape[0]):
         for j in range(policy.shape[1]):
@@ -143,12 +155,12 @@ def plot_policy_map(title, policy, map_desc, color_map, direction_map):
             p = plt.Rectangle([x, y], 1, 1, edgecolor='k', linewidth=0.1)
             p.set_facecolor(color_map[map_desc[i, j]])
             ax.add_patch(p)
-            if map_desc[i, j] in b'CHG':
-                continue
-            text = ax.text(x+0.5, y+0.5, direction_map[policy[i, j]], weight='bold', size=font_size,
-                           horizontalalignment='center', verticalalignment='center', color='w')
-            text.set_path_effects([path_effects.Stroke(linewidth=2, foreground='black'),
-                                   path_effects.Normal()])
+            if map_mask[i, j]:
+                text = ax.text(x+0.5, y+0.5, str(direction_map[policy[i, j]]), weight='bold', size=font_size,
+                               horizontalalignment='center', verticalalignment='center', color='k')
+                # TODO: Remove this?
+#                text.set_path_effects([path_effects.Stroke(linewidth=1, foreground='black'),
+#                                       path_effects.Normal()])
     plt.axis('off')
     plt.xlim((0, policy.shape[1]))
     plt.ylim((0, policy.shape[0]))
@@ -157,23 +169,40 @@ def plot_policy_map(title, policy, map_desc, color_map, direction_map):
     return watermark(plt)
 
 
-def plot_value_map(title, v, map_desc, color_map):
+def plot_value_map(title, v, map_desc, color_map, map_mask=None):
+    """
+
+    :param title:
+    :param v:
+    :param map_desc:
+    :param color_map:
+    :param map_mask: (OPTIONAL) Defines a mask in the same shape of policy that indicates which tiles should be printed.
+                 Only elements that are True will have policy printed on the tile
+    :return:
+    """
+    if map_mask is None:
+        map_mask = np.ones(v.shape, dtype=bool)
 
     fig = plt.figure()
     ax = fig.add_subplot(111, xlim=(0, v.shape[1]), ylim=(0, v.shape[0]))
-    font_size = 'x-large'
-    if v.shape[1] > 16:
-        font_size = 'small'
+    # FEATURE: Fix this better
+    font_size = 'xx-small'
+    # font_size = 'x-large'
+    # if v.shape[1] > 16:
+    #     font_size = 'small'
 
     v_min = np.min(v)
     v_max = np.max(v)
-    bins = np.linspace(v_min, v_max, 100)
-    v_red = np.digitize(v, bins)/100.0
+    # TODO: Disable this in more reasonble way.  Use input arg?
+    # bins = np.linspace(v_min, v_max, 100)
+    # v_red = np.digitize(v, bins)/100.0
+    # # Flip so that numbers are red when low, not high
+    # v_red = np.abs(v_red - 1)
     for i in range(v.shape[0]):
         for j in range(v.shape[1]):
             value = np.round(v[i, j], 1)
             if len(str(value)) > 3:
-                font_size = 'small'
+                font_size = 'xx-small'
 
     plt.title(title)
     for i in range(v.shape[0]):
@@ -186,13 +215,17 @@ def plot_value_map(title, v, map_desc, color_map):
 
             value = np.round(v[i, j], 1)
 
-            red = v_red[i, j]
-            if map_desc[i, j] in b'HG':
-                continue
-            text2 = ax.text(x+0.5, y+0.5, value, size=font_size,
-                            horizontalalignment='center', verticalalignment='center', color=(1.0, 1.0-red, 1.0-red))
-            text2.set_path_effects([path_effects.Stroke(linewidth=1, foreground='black'),
-                                   path_effects.Normal()])
+            # red = v_red[i, j]
+            # if map_desc[i, j] in b'HG':
+            #     continue
+            if map_mask[i, j]:
+
+                text2 = ax.text(x+0.5, y+0.5, value, size=font_size, weight='bold',
+                                horizontalalignment='center', verticalalignment='center', color='k')
+                # text2 = ax.text(x+0.5, y+0.5, value, size=font_size,
+                #                 horizontalalignment='center', verticalalignment='center', color=(1.0, 1.0-red, 1.0-red))
+                # text2.set_path_effects([path_effects.Stroke(linewidth=1, foreground='black'),
+                #                        path_effects.Normal()])
 
     plt.axis('off')
     plt.xlim((0, v.shape[1]))
@@ -203,7 +236,6 @@ def plot_value_map(title, v, map_desc, color_map):
 
 
 def plot_time_vs_steps(title, df, xlabel="Steps", ylabel="Time (s)"):
-
     plt.close()
     plt.figure()
     plt.title(title)
@@ -218,7 +250,6 @@ def plot_time_vs_steps(title, df, xlabel="Steps", ylabel="Time (s)"):
 
 
 def plot_reward_and_delta_vs_steps(title, df, xlabel="Steps", ylabel="Reward"):
-
     plt.close()
     plt.figure()
 
@@ -247,7 +278,6 @@ def plot_reward_and_delta_vs_steps(title, df, xlabel="Steps", ylabel="Reward"):
 
 # Adapted from http://code.activestate.com/recipes/578293-unicode-command-line-histograms/
 def cli_hist(data, bins=10):
-
     bars = u' ▁▂▃▄▅▆▇█'
     n, bin_edges = np.histogram(data, bins=bins)
     n2 = map(int, np.floor(n*(len(bars)-1)/(max(n))))
@@ -258,7 +288,6 @@ def cli_hist(data, bins=10):
 
 # Adapted from https://gist.github.com/joezuntz/2f3bdc2ab0ea59229907
 def ascii_hist(data, bins=10):
-
     N, X = np.histogram(data, bins=bins)
     total = 1.0 * len(data)
     width = 50
@@ -274,7 +303,6 @@ def ascii_hist(data, bins=10):
 
 
 def fetch_mdp_name(file, regexp):
-
     search_result = regexp.search(basename(file))
     if search_result is None:
         return False, False
@@ -285,7 +313,6 @@ def fetch_mdp_name(file, regexp):
 
 
 def process_params(problem_name, params):
-
     param_str = '{}'.format(params['discount_factor'])
     if problem_name == 'QL':
         param_str = '{}_{}_{}_{}_{}'.format(params['alpha'], params['q_init'], params['epsilon'],
@@ -295,7 +322,7 @@ def process_params(problem_name, params):
 
 
 def find_optimal_params(problem_name, base_dir, file_regex):
-
+    # FEATURE: Add something to catch failures here when leftover files from other runs are present.
     grid_files = glob.glob(os.path.join(base_dir, '*_grid*.csv'))
     logger.info("Grid files {}".format(grid_files))
     best_params = {}
@@ -332,7 +359,7 @@ def find_optimal_params(problem_name, base_dir, file_regex):
 
 
 def find_policy_images(base_dir, params):
-
+    # FEATURE: This image grabber does not handle cases when velocity or other extra state variables are present.  Fix
     policy_images = {}
     for mdp in params:
         mdp_params = params[mdp]
@@ -353,14 +380,16 @@ def find_policy_images(base_dir, params):
                 'value': value_file,
                 'policy': policy_file
             }
-        else:
+        elif len(image_files) < 2:
             logger.error("Unable to find image file for {} with params {}".format(mdp, mdp_params))
+        else:
+            logger.warning("Found {} image files for {} with params {} ".format(len(image_files), mdp, mdp_params) + \
+                        "- too many files, nothing copied")
 
     return policy_images
 
 
 def find_data_files(base_dir, params):
-
     data_files = {}
     for mdp in params:
         mdp_params = params[mdp]
@@ -381,7 +410,6 @@ def find_data_files(base_dir, params):
 
 
 def copy_best_images(best_images, base_dir):
-
     for problem_name in best_images:
         for mdp in best_images[problem_name]:
             mdp_files = best_images[problem_name][mdp]
@@ -403,7 +431,6 @@ def copy_best_images(best_images, base_dir):
 
 
 def copy_data_files(data_files, base_dir):
-
     for problem_name in data_files:
         for mdp in data_files[problem_name]:
             mdp_files = data_files[problem_name][mdp]
@@ -423,7 +450,6 @@ def copy_data_files(data_files, base_dir):
 
 
 def plot_data(data_files, envs, base_dir):
-
     for problem_name in data_files:
         for mdp in data_files[problem_name]:
             env = lookup_env_from_mdp(envs, mdp)
@@ -475,7 +501,6 @@ def plot_data(data_files, envs, base_dir):
 
 
 def lookup_env_from_mdp(envs, mdp):
-
     for env in envs:
         if env['name'] == mdp:
             return env
@@ -484,7 +509,6 @@ def lookup_env_from_mdp(envs, mdp):
 
 
 def problem_name_to_descriptive_name(problem_name):
-
     if problem_name == 'VI':
         return 'Value Iteration'
     if problem_name == 'PI':
@@ -495,7 +519,6 @@ def problem_name_to_descriptive_name(problem_name):
 
 
 def plot_results(envs):
-
     best_params = {}
     best_images = {}
     data_files = {}

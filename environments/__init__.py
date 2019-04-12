@@ -3,6 +3,7 @@ from gym.envs.registration import register
 
 from .cliff_walking import *
 from .frozen_lake import *
+from .Racetrack import *
 
 LAKE_STEP_PROB = 0.5
 LAKE_STEP_REW = -0.1
@@ -12,9 +13,14 @@ CLIFF_WIND_PROB = 0.1
 CLIFF_STEP_REW = -1
 CLIFF_FALL_REW = -100
 CLIFF_GOAL_REW = 100
+RACETRACK_X_VEL_LIMITS = (-2, 2)
+RACETRACK_Y_VEL_LIMITS = (-2, 2)
+RACETRACK_X_ACCEL_LIMITS = (-2, 2)
+RACETRACK_Y_ACCEL_LIMITS = (-2, 2)
+RACETRACK_MAX_TOTAL_ACCEL = 2
 
 
-__all__ = ['RewardingFrozenLakeEnv', 'WindyCliffWalkingEnv']
+__all__ = ['RewardingFrozenLakeEnv', 'WindyCliffWalkingEnv', 'Racetrack']
 
 register(
     id='RewardingFrozenLake4x4-v0',
@@ -76,79 +82,107 @@ register(
     entry_point='environments:WindyCliffWalkingEnv',
 )
 
+register(
+    id='Racetrack10x10-v0',
+    entry_point='environments:Racetrack',
+    )
 
-def get_rewarding_frozen_lake_4x4_environment(step_prob = LAKE_STEP_PROB, step_rew = LAKE_STEP_REW, \
-                                              hole_rew = LAKE_HOLE_REW, goal_rew = LAKE_GOAL_REW):
+register(
+    id='Racetrack20x10U-v0',
+    entry_point='environments:Racetrack',
+)
+
+def get_rewarding_frozen_lake_4x4_environment(step_prob=LAKE_STEP_PROB, step_rew=LAKE_STEP_REW, \
+                                              hole_rew=LAKE_HOLE_REW, goal_rew=LAKE_GOAL_REW):
     kwargs={'map_name': '4x4', 'step_rew': step_rew, 'hole_rew': hole_rew, 'goal_rew': goal_rew}
     return gym.make('RewardingFrozenLake4x4-v0', **kwargs)
 
 
-def get_rewarding_frozen_lake_8x8_environment(step_prob = LAKE_STEP_PROB, step_rew = LAKE_STEP_REW, \
-                                              hole_rew = LAKE_HOLE_REW, goal_rew = LAKE_GOAL_REW):
+def get_rewarding_frozen_lake_8x8_environment(step_prob=LAKE_STEP_PROB, step_rew=LAKE_STEP_REW, \
+                                              hole_rew=LAKE_HOLE_REW, goal_rew=LAKE_GOAL_REW):
     kwargs={'map_name': '8x8', 'step_rew': step_rew, 'hole_rew': hole_rew, 'goal_rew': goal_rew}
     return gym.make('RewardingFrozenLake8x8-v0', **kwargs)
 
 
-def get_large_rewarding_frozen_lake_12x12_environment(step_prob = LAKE_STEP_PROB, step_rew = LAKE_STEP_REW, \
-                                                      hole_rew = LAKE_HOLE_REW, goal_rew = LAKE_GOAL_REW):
+def get_large_rewarding_frozen_lake_12x12_environment(step_prob=LAKE_STEP_PROB, step_rew=LAKE_STEP_REW, \
+                                                      hole_rew=LAKE_HOLE_REW, goal_rew=LAKE_GOAL_REW):
     kwargs={'map_name': '12x12', 'step_rew': LAKE_STEP_REW, 'hole_rew': LAKE_HOLE_REW, 'goal_rew': LAKE_GOAL_REW}
     return gym.make('RewardingFrozenLake12x12-v0', **kwargs)
 
 
-def get_large_rewarding_frozen_lake_15x15_environment(step_prob = LAKE_STEP_PROB, step_rew = LAKE_STEP_REW, \
-                                                      hole_rew = LAKE_HOLE_REW, goal_rew = LAKE_GOAL_REW):
+def get_large_rewarding_frozen_lake_15x15_environment(step_prob=LAKE_STEP_PROB, step_rew=LAKE_STEP_REW, \
+                                                      hole_rew=LAKE_HOLE_REW, goal_rew=LAKE_GOAL_REW):
     kwargs={'map_name': '15x15', 'step_rew': step_rew, 'hole_rew': hole_rew, 'goal_rew': goal_rew}
     return gym.make('RewardingFrozenLake15x15-v0', **kwargs)
 
 
-def get_large_rewarding_frozen_lake_20x20_environment(step_prob = LAKE_STEP_PROB, step_rew = LAKE_STEP_REW, \
-                                                      hole_rew = LAKE_HOLE_REW, goal_rew = LAKE_GOAL_REW):
+def get_large_rewarding_frozen_lake_20x20_environment(step_prob=LAKE_STEP_PROB, step_rew=LAKE_STEP_REW, \
+                                                      hole_rew=LAKE_HOLE_REW, goal_rew=LAKE_GOAL_REW):
     kwargs={'map_name': '20x20', 'step_rew': step_rew, 'hole_rew': hole_rew, 'goal_rew': goal_rew}
     return gym.make('RewardingFrozenLake20x20-v0', **kwargs)
 
 
-def get_frozen_lake_environment(step_prob = LAKE_STEP_PROB, step_rew = LAKE_STEP_REW, hole_rew = LAKE_HOLE_REW, \
-                                goal_rew = LAKE_GOAL_REW):
+def get_frozen_lake_environment(step_prob=LAKE_STEP_PROB, step_rew=LAKE_STEP_REW, hole_rew=LAKE_HOLE_REW, \
+                                goal_rew=LAKE_GOAL_REW):
     return gym.make('FrozenLake-v0')
 
 
-def get_rewarding_no_reward_frozen_lake_4x4_environment(step_prob = LAKE_STEP_PROB, step_rew = LAKE_STEP_REW, \
-                                                        hole_rew = LAKE_HOLE_REW, goal_rew = LAKE_GOAL_REW):
+def get_rewarding_no_reward_frozen_lake_4x4_environment(step_prob=LAKE_STEP_PROB, step_rew=LAKE_STEP_REW, \
+                                                        hole_rew=LAKE_HOLE_REW, goal_rew=LAKE_GOAL_REW):
     kwargs={'map_name': '4x4', 'step_rew': step_rew, 'hole_rew': hole_rew, 'goal_rew': goal_rew}
     return gym.make('RewardingFrozenLakeNoRewards4x4-v0', **kwargs)
 
 
-def get_rewarding_no_reward_frozen_lake_environment(step_prob = LAKE_STEP_PROB, step_rew = LAKE_STEP_REW, \
-                                                    hole_rew = LAKE_HOLE_REW, goal_rew = LAKE_GOAL_REW):
+def get_rewarding_no_reward_frozen_lake_environment(step_prob=LAKE_STEP_PROB, step_rew=LAKE_STEP_REW, \
+                                                    hole_rew=LAKE_HOLE_REW, goal_rew=LAKE_GOAL_REW):
     kwargs={'map_name': '8x8', 'step_rew': step_rew, 'hole_rew': hole_rew, 'goal_rew': goal_rew}
     return gym.make('RewardingFrozenLakeNoRewards8x8-v0', **kwargs)
 
 
-def get_large_rewarding_no_reward_frozen_lake_12x12_environment(step_prob = LAKE_STEP_PROB, step_rew = LAKE_STEP_REW, \
-                                                                hole_rew = LAKE_HOLE_REW, goal_rew = LAKE_GOAL_REW):
+def get_large_rewarding_no_reward_frozen_lake_12x12_environment(step_prob=LAKE_STEP_PROB, step_rew=LAKE_STEP_REW, \
+                                                                hole_rew=LAKE_HOLE_REW, goal_rew=LAKE_GOAL_REW):
     kwargs={'map_name': '12x12', 'step_rew': step_rew, 'hole_rew': hole_rew, 'goal_rew': goal_rew}
     return gym.make('RewardingFrozenLakeNoRewards12x12-v0', **kwargs)
 
 
-def get_large_rewarding_no_reward_frozen_lake_15x15_environment(step_prob = LAKE_STEP_PROB, step_rew = LAKE_STEP_REW, \
-                                                                hole_rew = LAKE_HOLE_REW, goal_rew = LAKE_GOAL_REW):
+def get_large_rewarding_no_reward_frozen_lake_15x15_environment(step_prob=LAKE_STEP_PROB, step_rew=LAKE_STEP_REW, \
+                                                                hole_rew=LAKE_HOLE_REW, goal_rew=LAKE_GOAL_REW):
     kwargs={'map_name': '15x15', 'step_rew': step_rew, 'hole_rew': hole_rew, 'goal_rew': goal_rew}
     return gym.make('RewardingFrozenLakeNoRewards15x15-v0', **kwargs)
 
 
-def get_large_rewarding_no_reward_frozen_lake_20x20_environment(step_prob = LAKE_STEP_PROB, step_rew = LAKE_STEP_REW, \
-                                                                hole_rew = LAKE_HOLE_REW, goal_rew = LAKE_GOAL_REW):
+def get_large_rewarding_no_reward_frozen_lake_20x20_environment(step_prob=LAKE_STEP_PROB, step_rew=LAKE_STEP_REW, \
+                                                                hole_rew=LAKE_HOLE_REW, goal_rew=LAKE_GOAL_REW):
     kwargs={'map_name': '20x20', 'step_rew': step_rew, 'hole_rew': hole_rew, 'goal_rew': goal_rew}
     return gym.make('RewardingFrozenLakeNoRewards20x20-v0', **kwargs)
 
 
-def get_cliff_walking_4x12_environment(wind_prob = CLIFF_WIND_PROB, step_rew = CLIFF_STEP_REW, \
-                                       fall_rew = CLIFF_FALL_REW, goal_rew = CLIFF_GOAL_REW):
+def get_cliff_walking_4x12_environment(wind_prob=CLIFF_WIND_PROB, step_rew=CLIFF_STEP_REW, \
+                                       fall_rew=CLIFF_FALL_REW, goal_rew=CLIFF_GOAL_REW):
     kwargs={'wind_prob': 0, 'step_rew': step_rew, 'fall_rew': fall_rew, 'goal_rew': goal_rew},
     return gym.make('CliffWalking4x12-v0', **kwargs)
 
 
-def get_windy_cliff_walking_4x12_environment(wind_prob = CLIFF_WIND_PROB, step_rew = CLIFF_STEP_REW, \
-                                             fall_rew = CLIFF_FALL_REW, goal_rew = CLIFF_GOAL_REW):
+def get_windy_cliff_walking_4x12_environment(wind_prob=CLIFF_WIND_PROB, step_rew=CLIFF_STEP_REW, \
+                                             fall_rew=CLIFF_FALL_REW, goal_rew=CLIFF_GOAL_REW):
     return gym.make('WindyCliffWalking4x12-v0')
 
+
+def get_racetrack_10x10(x_vel_limits=RACETRACK_X_VEL_LIMITS, y_vel_limits=RACETRACK_Y_VEL_LIMITS,
+                        x_accel_limits=RACETRACK_X_ACCEL_LIMITS, y_accel_limits=RACETRACK_Y_ACCEL_LIMITS,
+                        max_total_accel=RACETRACK_MAX_TOTAL_ACCEL,):
+    kwargs={'track': '10x10', 
+            'x_vel_limits': x_vel_limits, 'y_vel_limits': y_vel_limits, 
+            'x_accel_limits': x_accel_limits, 'y_accel_limits': y_accel_limits, 
+            'max_total_accel': max_total_accel, }
+    return gym.make("Racetrack10x10-v0", **kwargs)
+
+
+def get_racetrack_20x10U(x_vel_limits=RACETRACK_X_VEL_LIMITS, y_vel_limits=RACETRACK_Y_VEL_LIMITS,
+                         x_accel_limits=RACETRACK_X_ACCEL_LIMITS, y_accel_limits=RACETRACK_Y_ACCEL_LIMITS,
+                         max_total_accel=RACETRACK_MAX_TOTAL_ACCEL,):
+    kwargs={'track': '20x10U', 
+            'x_vel_limits': x_vel_limits, 'y_vel_limits': y_vel_limits, 
+            'x_accel_limits': x_accel_limits, 'y_accel_limits': y_accel_limits, 
+            'max_total_accel': max_total_accel, }
+    return gym.make("Racetrack20x10U-v0", **kwargs)

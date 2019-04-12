@@ -16,6 +16,7 @@ MIN_EPISODES = MAX_EPISODES * 0.05
 MAX_EPISODE_STEPS = 500
 ALPHAS = [0.1, 0.5, 0.9]
 Q_INITS = ['random', 0]
+# TODO: Add minimum epsilon if there isn't one aleady
 EPSILONS = [0.1, 0.3, 0.5]
 EPS_DECAYS = [0.0001]
 DISCOUNT_MIN = 0
@@ -38,10 +39,12 @@ if not os.path.exists(IMG_DIR):
 
 class QLearnerExperiment(BaseExperiment):
 
-    def __init__(self, details, verbose=False, max_steps = MAX_STEPS, num_trials = NUM_TRIALS,
-                 max_episodes = MAX_EPISODES, min_episodes = MIN_EPISODES, max_episode_steps = MAX_EPISODE_STEPS, 
-                 min_sub_thetas = MIN_SUB_THETAS, theta = THETA, discounts = [DISCOUNT_MIN, DISCOUNT_MAX, NUM_DISCOUNTS],
-                 alphas = ALPHAS, q_inits = Q_INITS, epsilons = EPSILONS, epsilon_decays = EPS_DECAYS):
+    def __init__(self, details, verbose=False, max_steps=MAX_STEPS, num_trials=NUM_TRIALS,
+                 max_episodes=MAX_EPISODES, min_episodes=MIN_EPISODES, max_episode_steps=MAX_EPISODE_STEPS,
+                 min_sub_thetas=MIN_SUB_THETAS, theta=THETA, discount_factors=None,
+                 alphas=ALPHAS, q_inits=Q_INITS, epsilons=EPSILONS, epsilon_decays=EPS_DECAYS):
+        if discount_factors is None:
+            discount_factors = np.round(np.linspace(DISCOUNT_MIN, DISCOUNT_MAX, NUM_DISCOUNTS), 2)
         self._max_episodes = max_episodes
         self._max_episode_steps = max_episode_steps
         self._min_episodes = min_episodes
@@ -49,14 +52,10 @@ class QLearnerExperiment(BaseExperiment):
         self._min_sub_thetas = min_sub_thetas
         self._theta = theta
         self._epsilon_decays = epsilon_decays
-        self._discount_min = discounts[0]
-        self._discount_max = discounts[1]
-        self._num_discounts = discounts[2]
+        self._discount_factors = discount_factors
         self._alphas = alphas
         self._q_inits = q_inits
         self._epsilons = epsilons
-        if type(epsilon_decays) != list:
-            epsilon_decays = list(epsilon_decays)
 
         super(QLearnerExperiment, self).__init__(details, verbose, max_steps)
 
@@ -72,9 +71,7 @@ class QLearnerExperiment(BaseExperiment):
         with open(grid_file_name, 'w') as f:
             f.write("params,time,steps,reward_mean,reward_median,reward_min,reward_max,reward_std\n")
 
-        discount_factors = np.round(np.linspace(self._discount_min, max(self._discount_min, self._discount_max), \
-                                    num = self._num_discounts), 2)
-        dims = len(discount_factors) * len(self._alphas) * len(self._q_inits) * len(self._epsilons) * len(self._epsilon_decays)
+        dims = len(self._discount_factors) * len(self._alphas) * len(self._q_inits) * len(self._epsilons) * len(self._epsilon_decays)
         self.log("Searching Q in {} dimensions".format(dims))
 
         runs = 1
@@ -82,22 +79,26 @@ class QLearnerExperiment(BaseExperiment):
             for q_init in self._q_inits:
                 for epsilon in self._epsilons:
                     for epsilon_decay in self._epsilon_decays:
-                        for discount_factor in discount_factors:
+                        for discount_factor in self._discount_factors:
                             t = time.clock()
                             self.log("{}/{} Processing QL with alpha {}, q_init {}, epsilon {}, epsilon_decay {},"
                                      " discount_factor {}".format(
                                 runs, dims, alpha, q_init, epsilon, epsilon_decay, discount_factor
                             ))
 
+                            # Build a QLeaningSolver object
                             qs = solvers.QLearningSolver(self._details.env, self._max_episodes, self._min_episodes,
-                                                         max_steps_per_episode = self._max_episode_steps,
-                                                         discount_factor = discount_factor,
-                                                         alpha = alpha,
-                                                         epsilon = epsilon, epsilon_decay = epsilon_decay,
-                                                         q_init = q_init,
-                                                         min_consecutive_sub_theta_episodes = self._min_sub_thetas,
-                                                         verbose = self._verbose, theta = self._theta)
+                                                         max_steps_per_episode=self._max_episode_steps,
+                                                         discount_factor=discount_factor,
+                                                         alpha=alpha,
+                                                         epsilon=epsilon, epsilon_decay=epsilon_decay,
+                                                         q_init=q_init,
+                                                         min_consecutive_sub_theta_episodes=self._min_sub_thetas,
+                                                         verbose=self._verbose, theta=self._theta)
 
+                            # Run the solver to generate an optimal policy.  Stats object contains details about all
+                            # optimal policy and 
+                            # s
                             stats = self.run_solver_and_collect(qs, self.convergence_check_fn)
 
                             self.log("Took {} episodes".format(len(stats.steps)))
@@ -105,14 +106,14 @@ class QLearnerExperiment(BaseExperiment):
                                                       alpha, q_init, epsilon, epsilon_decay, discount_factor)))
                             stats.pickle_results(os.path.join(PKL_DIR, '{}_{}_{}_{}_{}_{}_{}.pkl'.format(self._details.env_name,
                                                  alpha, q_init, epsilon, epsilon_decay, discount_factor, '{}')), map_desc.shape,
-                                                 step_size = self._max_episodes / 20.0)
+                                                 step_size=self._max_episodes / 20.0)
                             stats.plot_policies_on_map(os.path.join(IMG_DIR, '{}_{}_{}_{}_{}_{}_{}.png'.format(self._details.env_name,
                                                        alpha, q_init, epsilon, epsilon_decay, discount_factor, '{}_{}')),
                                                        map_desc, self._details.env.colors(),
                                                        self._details.env.directions(),
                                                        'Q-Learner', 'Episode', self._details,
-                                                       step_size = self._max_episodes / 20.0,
-                                                       only_last = True)
+                                                       step_size=self._max_episodes / 20.0,
+                                                       only_last=True)
 
                             # We have extra stats about the episode we might want to look at later
                             episode_stats = qs.get_stats()

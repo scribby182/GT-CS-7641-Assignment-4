@@ -115,8 +115,8 @@ class RewardingFrozenLakeEnv(discrete.DiscreteEnv):
 
     metadata = {'render.modes': ['human', 'ansi']}
 
-    def __init__(self, desc=None, map_name="4x4", rewarding=True, step_rew=-0.1, hole_rew=-1, goal_rew = 1, \
-                 is_slippery=True, step_prob = 0.5):
+    def __init__(self, desc=None, map_name="4x4", rewarding=True, step_rew=-0.1, hole_rew=-1, goal_rew=1, \
+                 is_slippery=True, step_prob=0.5):
 
         if desc is None and map_name is None:
             raise ValueError('Must provide either desc or map_name')
@@ -145,7 +145,6 @@ class RewardingFrozenLakeEnv(discrete.DiscreteEnv):
             return row * ncol + col
 
         def inc(row, col, a):
-
             if a == 0:  # left
                 col = max(col - 1, 0)
             elif a == 1:  # down
@@ -162,6 +161,7 @@ class RewardingFrozenLakeEnv(discrete.DiscreteEnv):
                 for a in range(4):
                     li = P[s][a]
                     letter = desc[row, col]
+#                   TODO: This changed a little.  Understand it
                     if letter in b'G':
                         li.append((1.0, s, self.goal_reward, True))
                     else:
@@ -197,7 +197,6 @@ class RewardingFrozenLakeEnv(discrete.DiscreteEnv):
         super(RewardingFrozenLakeEnv, self).__init__(nS, nA, P, isd)
 
     def render(self, mode='human'):
-
         outfile = StringIO() if mode == 'ansi' else sys.stdout
 
         row, col = self.s // self.ncol, self.s % self.ncol
@@ -214,7 +213,13 @@ class RewardingFrozenLakeEnv(discrete.DiscreteEnv):
             return outfile
 
     def colors(self):
-
+#       Old colors:
+#        return {
+#            b'S': 'green',
+#            b'F': 'skyblue',
+#            b'H': 'black',
+#            b'G': 'gold',
+#        }
         return {
             b'S': 'black',
             b'F': 'skyblue',
@@ -223,7 +228,6 @@ class RewardingFrozenLakeEnv(discrete.DiscreteEnv):
         }
 
     def directions(self):
-
         return {
             4: '',
             3: '⬆',

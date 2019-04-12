@@ -10,7 +10,7 @@ from experiments import plotting
 
 
 # Configure rewards per environment
-ENV_REWARDS = {
+ENV_SETTINGS = {
                'small_lake':    { 'step_prob': 0.6,
                                   'step_rew': -0.1,
                                   'hole_rew': -100,
@@ -26,6 +26,12 @@ ENV_REWARDS = {
                                   'fall_rew': -100,
                                   'goal_rew': 100,
                                 },
+                'racetrack':    { 'x_vel_limits': (-2, 2),
+                                  'y_vel_limits': (-2, 2),
+                                  'x_accel_limits': (-2, 2),
+                                  'y_accel_limits': (-2, 2),
+                                  'max_total_accel': 2,
+                                },
               }
 
 # Configure max steps per experiment
@@ -35,6 +41,7 @@ MAX_STEPS = { 'pi': 5000,
             }
 
 # Configure trials per experiment
+# TODO: What does this do?
 NUM_TRIALS = { 'pi': 1000,
                'vi': 100,
                'ql': 1000,
@@ -45,20 +52,30 @@ PI_THETA = 0.00001
 VI_THETA = 0.00001
 QL_THETA = 0.001
 
-# Configure discounts per experiment (format: [min_discount, max_discount, num_discounts])
-PI_DISCOUNTS = [0.0, 0.9, 10]
-VI_DISCOUNTS = [0.0, 0.9, 10]
-QL_DISCOUNTS = [0.0, 0.9, 10]
+# Configure discounts per experiment (format: iterable of discount factors)
+PI_DISCOUNTS = [0.9]
+VI_DISCOUNTS = [0.9]
+QL_DISCOUNTS = [0.9]
 
 # Configure other QL experiment parameters
 QL_MAX_EPISODES = max(MAX_STEPS['ql'], NUM_TRIALS['ql'], 30000)
 QL_MIN_EPISODES = QL_MAX_EPISODES * 0.01
 QL_MAX_EPISODE_STEPS = 10000 # maximun steps per episode
-QL_MIN_SUB_THETAS = 5 # num of consecutive episodes with little change before calling it converged
-QL_ALPHAS = [0.1, 0.5, 0.9,] # a list of alphas to try
-QL_Q_INITS = ['random', 0,] # a list of q-inits to try
-QL_EPSILONS = [0.1, 0.3, 0.5,] # a list of epsilons to try
+QL_MIN_SUB_THETAS = 5  # num of consecutive episodes with little change before calling it converged
+QL_ALPHAS = [0.1,]  # a list of alphas to try
+QL_Q_INITS = [0,]  # a list of q-inits to try
+QL_EPSILONS = [0.1]  # a list of epsilons to try
 QL_EPSILON_DECAYS = [0.0001,] # a list of epsilon decays to try
+
+# # Configure other QL experiment parameters
+# QL_MAX_EPISODES = max(MAX_STEPS['ql'], NUM_TRIALS['ql'], 30000)
+# QL_MIN_EPISODES = QL_MAX_EPISODES * 0.01
+# QL_MAX_EPISODE_STEPS = 10000 # maximun steps per episode
+# QL_MIN_SUB_THETAS = 5 # num of consecutive episodes with little change before calling it converged
+# QL_ALPHAS = [0.1, 0.5, 0.9,] # a list of alphas to try
+# QL_Q_INITS = ['random', 0,] # a list of q-inits to try
+# QL_EPSILONS = [0.1, 0.3, 0.5,] # a list of epsilons to try
+# QL_EPSILON_DECAYS = [0.0001,] # a list of epsilon decays to try
 
 
 # Configure logging
@@ -66,23 +83,23 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 
-def run_experiment(experiment_details, experiment, timing_key, verbose, timings, max_steps, num_trials, \
-                   theta = None, max_episodes = None, min_episodes = None, max_episode_steps = None, \
-                   min_sub_thetas = None, discounts = None, alphas = None, q_inits = None, epsilons = None, \
-                   epsilon_decays = None):
+def run_experiment(experiment_details, experiment, timing_key, verbose, timings, max_steps, num_trials,
+                   theta=None, max_episodes=None, min_episodes=None, max_episode_steps=None,
+                   min_sub_thetas=None, discount_factors=None, alphas=None, q_inits=None, epsilons=None,
+                   epsilon_decays=None):
 
     timings[timing_key] = {}
     for details in experiment_details:
         t = datetime.now()
         logger.info("Running {} experiment: {}".format(timing_key, details.env_readable_name))
-        if timing_key == 'QL': # Q-Learning
+        if timing_key == 'QL':  # Q-Learning
             exp = experiment(details, verbose=verbose, max_steps=max_steps, num_trials=num_trials,
                              max_episodes=max_episodes, min_episodes=min_episodes, max_episode_steps=max_episode_steps,
-                             min_sub_thetas=min_sub_thetas, theta=theta, discounts=discounts, alphas=alphas,
+                             min_sub_thetas=min_sub_thetas, theta=theta, discount_factors=discount_factors, alphas=alphas,
                              q_inits=q_inits, epsilons=epsilons, epsilon_decays=epsilon_decays)
-        else: # NOT Q-Learning
+        else:  # NOT Q-Learning
             exp = experiment(details, verbose=verbose, max_steps=max_steps, num_trials=num_trials, theta=theta,
-                             discounts=discounts)
+                             discount_factors=discount_factors)
         exp.perform()
         t_d = datetime.now() - t
         timings[timing_key][details.env_name] = t_d.seconds
@@ -117,30 +134,48 @@ if __name__ == '__main__':
 
     # Modify this list of dicts to add/remove/swap environments
     envs = [
+        # {
+        #     'env': environments.get_rewarding_frozen_lake_8x8_environment(ENV_SETTINGS['small_lake']['step_prob'],
+        #                                                                   ENV_SETTINGS['small_lake']['step_rew'],
+        #                                                                   ENV_SETTINGS['small_lake']['hole_rew'],
+        #                                                                   ENV_SETTINGS['small_lake']['goal_rew']),
+        #     'name': 'frozen_lake',
+        #     'readable_name': 'Frozen Lake (8x8)',
+        # },
+        # {
+        #     'env': environments.get_large_rewarding_frozen_lake_15x15_environment(ENV_SETTINGS['large_lake']['step_prob'],
+        #                                                                           ENV_SETTINGS['large_lake']['step_rew'],
+        #                                                                           ENV_SETTINGS['large_lake']['hole_rew'],
+        #                                                                           ENV_SETTINGS['large_lake']['goal_rew']),
+        #     'name': 'large_frozen_lake',
+        #     'readable_name': 'Frozen Lake (15x15)',
+        # },
+        # {
+        #     'env': environments.get_windy_cliff_walking_4x12_environment(ENV_SETTINGS['cliff_walking']['wind_prob'],
+        #                                                                  ENV_SETTINGS['cliff_walking']['step_rew'],
+        #                                                                  ENV_SETTINGS['cliff_walking']['fall_rew'],
+        #                                                                  ENV_SETTINGS['cliff_walking']['goal_rew']),
+        #     'name': 'cliff_walking',
+        #     'readable_name': 'Cliff Walking (4x12)',
+        # },
         {
-            'env': environments.get_rewarding_frozen_lake_8x8_environment(ENV_REWARDS['small_lake']['step_prob'],
-                                                                          ENV_REWARDS['small_lake']['step_rew'],
-                                                                          ENV_REWARDS['small_lake']['hole_rew'],
-                                                                          ENV_REWARDS['small_lake']['goal_rew']),
-            'name': 'frozen_lake',
-            'readable_name': 'Frozen Lake (8x8)',
+            'env': environments.get_racetrack_10x10( x_vel_limits=ENV_SETTINGS['racetrack']['x_vel_limits'],
+                                                     y_vel_limits=ENV_SETTINGS['racetrack']['y_vel_limits'],
+                                                     x_accel_limits=ENV_SETTINGS['racetrack']['x_accel_limits'],
+                                                     y_accel_limits=ENV_SETTINGS['racetrack']['y_accel_limits'],
+                                                     max_total_accel=ENV_SETTINGS['racetrack']['max_total_accel']),
+            'name': 'racetrack_10x10',
+            'readable_name': 'Racetrack (10x10)',
         },
-        {
-            'env': environments.get_large_rewarding_frozen_lake_15x15_environment(ENV_REWARDS['large_lake']['step_prob'],
-                                                                                  ENV_REWARDS['large_lake']['step_rew'],
-                                                                                  ENV_REWARDS['large_lake']['hole_rew'],
-                                                                                  ENV_REWARDS['large_lake']['goal_rew']),
-            'name': 'large_frozen_lake',
-            'readable_name': 'Frozen Lake (15x15)',
-        },
-        {
-            'env': environments.get_windy_cliff_walking_4x12_environment(ENV_REWARDS['cliff_walking']['wind_prob'],
-                                                                         ENV_REWARDS['cliff_walking']['step_rew'],
-                                                                         ENV_REWARDS['cliff_walking']['fall_rew'],
-                                                                         ENV_REWARDS['cliff_walking']['goal_rew']),
-            'name': 'cliff_walking',
-            'readable_name': 'Cliff Walking (4x12)',
-        }
+        # {
+        #     'env': environments.get_racetrack_20x10U(x_vel_limits=ENV_SETTINGS['racetrack']['x_vel_limits'],
+        #                                              y_vel_limits=ENV_SETTINGS['racetrack']['y_vel_limits'],
+        #                                              x_accel_limits=ENV_SETTINGS['racetrack']['x_accel_limits'],
+        #                                              y_accel_limits=ENV_SETTINGS['racetrack']['y_accel_limits'],
+        #                                              max_total_accel=ENV_SETTINGS['racetrack']['max_total_accel']),
+        #     'name': 'racetrack_20x10u',
+        #     'readable_name': 'Racetrack (20x10U)',
+        # },
     ]
 
     # Set up experiments
@@ -165,22 +200,22 @@ if __name__ == '__main__':
     # Run Policy Iteration (PI) experiment
     if args.policy or args.all:
         print('\n\n')
-        run_experiment(experiment_details, experiments.PolicyIterationExperiment, 'PI', verbose, timings, \
-                       MAX_STEPS['pi'], NUM_TRIALS['pi'], theta=PI_THETA, discounts=PI_DISCOUNTS)
+        run_experiment(experiment_details, experiments.PolicyIterationExperiment, 'PI', verbose, timings,
+                       MAX_STEPS['pi'], NUM_TRIALS['pi'], theta=PI_THETA, discount_factors=PI_DISCOUNTS)
 
     # Run Value Iteration (VI) experiment
     if args.value or args.all:
         print('\n\n')
-        run_experiment(experiment_details, experiments.ValueIterationExperiment, 'VI', verbose, timings, \
-                       MAX_STEPS['vi'], NUM_TRIALS['vi'], theta=VI_THETA, discounts=VI_DISCOUNTS)
+        run_experiment(experiment_details, experiments.ValueIterationExperiment, 'VI', verbose, timings,
+                       MAX_STEPS['vi'], NUM_TRIALS['vi'], theta=VI_THETA, discount_factors=VI_DISCOUNTS)
 
     # Run Q-Learning (QL) experiment
     if args.ql or args.all:
         print('\n\n')
-        run_experiment(experiment_details, experiments.QLearnerExperiment, 'QL', verbose, timings, MAX_STEPS['ql'], \
-                       NUM_TRIALS['ql'], max_episodes=QL_MAX_EPISODES, max_episode_steps=QL_MAX_EPISODE_STEPS, \
-                       min_episodes = QL_MIN_EPISODES, min_sub_thetas=QL_MIN_SUB_THETAS, theta=QL_THETA, \
-                       discounts=QL_DISCOUNTS, alphas=QL_ALPHAS, q_inits=QL_Q_INITS, epsilons=QL_EPSILONS, \
+        run_experiment(experiment_details, experiments.QLearnerExperiment, 'QL', verbose, timings, MAX_STEPS['ql'],
+                       NUM_TRIALS['ql'], max_episodes=QL_MAX_EPISODES, max_episode_steps=QL_MAX_EPISODE_STEPS,
+                       min_episodes=QL_MIN_EPISODES, min_sub_thetas=QL_MIN_SUB_THETAS, theta=QL_THETA,
+                       discount_factors=QL_DISCOUNTS, alphas=QL_ALPHAS, q_inits=QL_Q_INITS, epsilons=QL_EPSILONS,
                        epsilon_decays=QL_EPSILON_DECAYS)
 
     # Generate plots

@@ -30,15 +30,16 @@ if not os.path.exists(IMG_DIR):
 
 class PolicyIterationExperiment(BaseExperiment):
 
-    def __init__(self, details, verbose=False, max_steps = MAX_STEPS, num_trials = NUM_TRIALS, theta = THETA,
-                 discounts = [DISCOUNT_MIN, DISCOUNT_MAX, NUM_DISCOUNTS]):
+    def __init__(self, details, verbose=False, max_steps=MAX_STEPS, num_trials=NUM_TRIALS, theta=THETA,
+                 discount_factors=None):
+        if discount_factors is None:
+            discount_factors = np.round(np.linspace(DISCOUNT_MIN, DISCOUNT_MAX, NUM_DISCOUNTS), 2)
+
         super(PolicyIterationExperiment, self).__init__(details, verbose, max_steps)
         self._num_trials = num_trials
         self._max_steps = max_steps
         self._theta = theta
-        self._discount_min = discounts[0]
-        self._discount_max = discounts[1]
-        self._num_discounts = discounts[2]
+        self._discount_factors = discount_factors
 
     def convergence_check_fn(self, solver, step_count):
         return solver.has_converged()
@@ -52,13 +53,11 @@ class PolicyIterationExperiment(BaseExperiment):
         with open(grid_file_name, 'w') as f:
             f.write("params,time,steps,reward_mean,reward_median,reward_min,reward_max,reward_std\n")
 
-        discount_factors = np.round(np.linspace(self._discount_min, max(self._discount_min, self._discount_max), \
-                                    num = self._num_discounts), 2)
-        dims = len(discount_factors)
+        dims = len(self._discount_factors)
         self.log("Searching PI in {} dimensions".format(dims))
 
         runs = 1
-        for discount_factor in discount_factors:
+        for discount_factor in self._discount_factors:
             t = time.clock()
             self.log("{}/{} Processing PI with discount factor {}".format(runs, dims, discount_factor))
 

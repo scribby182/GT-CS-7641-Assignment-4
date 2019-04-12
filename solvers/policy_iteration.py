@@ -28,7 +28,23 @@ class PolicyIterationSolver(BaseSolver):
         super(PolicyIterationSolver, self).__init__(verbose)
 
     def step(self):
-
+        """
+        Perform one iteration of Policy Iteration.
+        
+        Computes a new value function given current policy, then computes a new policy for all states given this value 
+        function
+        
+        :return: Tuple of:
+            (   
+                policy,
+                value function,
+                total number of policy iterations performed so far,
+                time required to compute this policy iteration,
+                sum of rewards obtained by best action across all states,
+                maximum change in value of a state in this policy iteration,
+                boolean denoting whether the policy changed in this policy iteration,
+            )
+        """
         start_time = time.clock()
         # Evaluate the current policy
         V = self.evaluate_policy(self._policy, discount_factor=self._discount_factor,
@@ -66,7 +82,6 @@ class PolicyIterationSolver(BaseSolver):
         return self._policy, V, self._steps, self._step_times[-1], reward, delta, self._policy_stable
 
     def reset(self):
-
         self._policy = np.ones([self._env.nS, self._env.nA]) / self._env.nA
         self._steps = 0
         self._step_times = []

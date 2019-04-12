@@ -29,7 +29,23 @@ class ValueIterationSolver(BaseSolver):
         super(ValueIterationSolver, self).__init__(verbose)
 
     def step(self):
+        """
+        Perform one iteration of Value Iteration.
 
+        Update the value function across all states by computing the best quality (best V[s][a] over all available a)
+        available at each state, then compute a policy given this updated value function.
+
+        :return: Tuple of:
+            (   
+                policy,
+                value function,
+                total number of value iterations performed so far,
+                time required to compute this policy iteration,
+                sum of rewards obtained by best action across all states,
+                maximum change in value of a state in this policy iteration,
+                boolean denoting whether the value iteration has converged,
+            )
+        """
         start_time = time.clock()
 
         delta = 0
@@ -64,7 +80,6 @@ class ValueIterationSolver(BaseSolver):
         return self._policy, self._V, self._steps, self._step_times[-1], reward, delta, self.has_converged()
 
     def reset(self):
-
         self._V = np.zeros(self._env.nS)
         self._policy = np.zeros([self._env.nS, self._env.nA])
         self._steps = 0

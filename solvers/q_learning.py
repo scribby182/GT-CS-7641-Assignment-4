@@ -36,7 +36,23 @@ class QLearningSolver(BaseSolver):
         super(QLearningSolver, self).__init__(verbose)
 
     def step(self):
+        """
+        Perform and learn from one walk through an environment from starting state to a terminal state
 
+        For each experience (at state s do action a, receive reward r and move to state s'), update the Q function
+
+        :return: Tuple of:
+            (
+                policy,
+                value function,
+                total number of full walks through the environment performed so far,
+                time required to compute this walk through the environment,
+                sum of rewards obtained during this walk through the environment divided by total steps,
+                maximum change in value of a state in this policy iteration,
+                boolean denoting whether the learner is judged to be converged,
+            )
+        """
+        # This step is a full walk through an environment, from starting state to a terminal state
         start_time = time.clock()
 
         # Reset the environment and pick the first action
@@ -46,10 +62,17 @@ class QLearningSolver(BaseSolver):
         total_reward = 0.0
         episode_steps = 0
         for t in range(self._max_steps_per_episode+1):
+            # Convert a tuple state into its index, if required
+            if isinstance(state, tuple):
+                state = self.get_environment().state_to_index[state]
+
             # Take a step
             action_probs = self._policy_function(state)
             action = np.random.choice(np.arange(len(action_probs)), p=action_probs)
             next_state, reward, done, _ = self._env.step(action)
+            # Convert a tuple next_state into its index, if required
+            if isinstance(next_state, tuple):
+                next_state = self.get_environment().state_to_index[next_state]
 
             # Update statistics
             self._stats.episode_rewards[self._steps] += reward
@@ -88,7 +111,6 @@ class QLearningSolver(BaseSolver):
             total_reward/episode_steps, self._last_delta, self.has_converged()
 
     def reset(self):
-
         self._init_q()
         self._steps = 0
         self._step_times = []
@@ -98,7 +120,6 @@ class QLearningSolver(BaseSolver):
         self._consecutive_sub_theta_episodes = 0
 
     def has_converged(self):
-
         return (self._steps >= self._min_episodes and
                 self._consecutive_sub_theta_episodes >= self._min_consecutive_sub_theta_episodes) \
                or self._steps > self._max_episodes
@@ -120,7 +141,6 @@ class QLearningSolver(BaseSolver):
         return self._Q
 
     def get_policy(self):
-
         policy = np.zeros([self._env.nS, self._env.nA])
         for s in range(self._env.nS):
             best_action = np.argmax(self._Q[s])
@@ -130,7 +150,6 @@ class QLearningSolver(BaseSolver):
         return policy
 
     def get_value(self):
-
         v = np.zeros(self._env.nS)
         for s in range(self._env.nS):
             v[s] = np.max(self._Q[s])
@@ -138,7 +157,6 @@ class QLearningSolver(BaseSolver):
         return v
 
     def _init_q(self):
-
         if self._q_init == 'random':
             self._Q = np.random.rand(self._env.observation_space.n, self._env.action_space.n)/1000.0
         elif int(self._q_init) == 0:
@@ -147,8 +165,10 @@ class QLearningSolver(BaseSolver):
             self._Q = np.full((self._env.observation_space.n, self._env.action_space.n), float(self._q_init))
 
     def _policy_function(self, observation):
-
         A = np.ones(self._env.action_space.n, dtype=float) * self._epsilon / self._env.action_space.n
+        # Convert observation (state) to index for state, if necessary
+        if isinstance(observation, tuple):
+            observation = self.get_environment().state_to_index[observation]
         best_action = np.argmax(self._Q[observation])
         A[best_action] += (1.0 - self._epsilon)
         return A
@@ -168,9 +188,7 @@ class QLearningSolver(BaseSolver):
             A function that takes the observation as an argument and returns
             the probabilities for each action in the form of a numpy array of length nA.
         """
-
         def policy_fn(observation):
-
             A = np.ones(self._env.action_space.n, dtype=float) * self._epsilon / self._env.action_space.n
             best_action = np.argmax(self._Q[observation])
             A[best_action] += (1.0 - self._epsilon)
