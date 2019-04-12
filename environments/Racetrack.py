@@ -12,12 +12,12 @@ REWARDS = {
 
 # Character map for the map characters (say that 10 times fast!)
 CHAR_MAP = {
-    "W": {'start_prob': 0., 'reward': REWARDS['crash'], 'terminal': True},
-    "S": {'start_prob': 1., 'reward': REWARDS['time'], 'terminal': False},
-    " ": {'start_prob': 0., 'reward': REWARDS['time'], 'terminal': False},
-    "F": {'start_prob': 0., 'reward': REWARDS['finish'], 'terminal': True},
+    "W": {'start_prob': 0., 'reward': REWARDS['crash'], 'terminal': True, 'color': 'forestgreen'},
+    "S": {'start_prob': 1., 'reward': REWARDS['time'], 'terminal': False, 'color': 'dodgerblue'},
+    " ": {'start_prob': 0., 'reward': REWARDS['time'], 'terminal': False, 'color': 'darkgray'},
+    "F": {'start_prob': 0., 'reward': REWARDS['finish'], 'terminal': True, 'color': 'gold'},
+    "O": {'start_prob': 0., 'reward': REWARDS['time'], 'terminal': False, 'color': 'gray', 'chance_to_slip': 0.25}
 }
-
 
 TRACKS = {
     '10x10': [
@@ -43,6 +43,18 @@ TRACKS = {
         "WW   SWWWWWWWW    WW",
         "WWWWWWWWWWWWWWFFFFWW",
         "WWWWWWWWWWWWWWFFFFWW",
+    ],
+    '10x10_oil': [
+        "WWWWWWWWWW",
+        "WWWWWWWWWW",
+        "WWW     FF",
+        "WWW  OO FF",
+        "WW  OOWWWW",
+        "WW  OWWWWW",
+        "WW    WWWW",
+        "WW   SWWWW",
+        "WWWWWWWWWW",
+        "WWWWWWWWWW",
     ],
 }
 
@@ -77,6 +89,8 @@ class Racetrack(discrete.DiscreteEnv):
         self.max_total_accel = max_total_accel
 
         self.verbose = verbose
+
+        self._colors = {k.encode(): char_map[k]['color'] for k in char_map}
 
         n_states, n_actions, p, starting_probability, action_map, terminal_locations = \
             track_to_p_matrix(track=self.track, char_map=self.char_map,
@@ -142,15 +156,11 @@ class Racetrack(discrete.DiscreteEnv):
                          max_total_accel=self.max_total_accel, seed=None, verbose=self.verbose)
 
     def colors(self):
-        return {
-            b'W': 'black',
-            b'F': 'gold',
-            b'S': 'green',
-            b' ': 'gray',
-        }
+        return self._colors
 
     def directions(self):
         return self.index_to_action
+
 
 def print_track(track, rc=None, xy=None, print_as='*'):
     """
@@ -327,11 +337,34 @@ def track_to_p_matrix(track, char_map=CHAR_MAP, x_vel_limits=None, y_vel_limits=
                             # Get reward associated with entering next state, and decide if this action is terminal
                             reward = char_map[track[next_r][next_c]]['reward']
                             terminal = char_map[track[next_r][next_c]]['terminal']
-                            # Define probabilistic results of this action (could have more than one)
-                            actions[(x_accel, y_accel)] = [
-                                # (prob, next_state, reward, boolean_for_terminal_state)
-                                (1.0, next_state, reward, terminal),
-                            ]
+
+                            # Define probabilistic results of this action
+                            if track[i_row][i_col] == 'O':
+                                # Oil is slippery!  Add a chance of slipping and having no acceleration on this move
+                                next_x_if_slipped = x + x_vel
+                                next_y_if_slipped = y + y_vel
+                                next_state_if_slipped = (next_x_if_slipped, next_y_if_slipped, x_vel, y_vel)
+
+                                # Next location in i_row, i_col
+                                next_r_if_slipped, next_c_if_slipped = \
+                                    xy_to_rc(track, next_x_if_slipped, next_y_if_slipped)
+
+                                # Get reward associated with entering next state, and decide if this action is terminal
+                                reward_if_slipped = char_map[track[next_r_if_slipped][next_c_if_slipped]]['reward']
+                                terminal_if_slipped = char_map[track[next_r_if_slipped][next_c_if_slipped]]['terminal']
+
+                                actions[(x_accel, y_accel)] = [
+                                    # (prob, next_state, reward, boolean_for_terminal_state)
+                                    (1.0 - char_map['O']['chance_to_slip'], next_state, reward, terminal),
+                                    (char_map['O']['chance_to_slip'], next_state_if_slipped, reward_if_slipped,
+                                     terminal_if_slipped),
+                                ]
+                            else:
+                                # Clean track - everything works well
+                                actions[(x_accel, y_accel)] = [
+                                    # (prob, next_state, reward, boolean_for_terminal_state)
+                                    (1.0, next_state, reward, terminal),
+                                ]
                             if verbose:
                                 print(f'\ta= {(x_accel, y_accel)} -> v={(next_x_vel, next_y_vel)}, s` = {next_state}(xy) ({next_r, next_c} (rc)), r={reward}, done={terminal}')
                     p[(x, y, x_vel, y_vel)] = actions

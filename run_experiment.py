@@ -40,8 +40,8 @@ MAX_STEPS = { 'pi': 5000,
               'ql': 20000, 
             }
 
-# Configure trials per experiment
-# TODO: What does this do?
+# Configure trials per experiment (number of times we run the optimal policy to evaluate its effectiveness)
+# Is this interpretation correct???
 NUM_TRIALS = { 'pi': 1000,
                'vi': 100,
                'ql': 1000,
@@ -60,22 +60,21 @@ QL_DISCOUNTS = [0.9]
 # Configure other QL experiment parameters
 QL_MAX_EPISODES = max(MAX_STEPS['ql'], NUM_TRIALS['ql'], 30000)
 QL_MIN_EPISODES = QL_MAX_EPISODES * 0.01
-QL_MAX_EPISODE_STEPS = 10000 # maximun steps per episode
+QL_MAX_EPISODE_STEPS = 10000  # maximun steps per episode
 QL_MIN_SUB_THETAS = 5  # num of consecutive episodes with little change before calling it converged
-QL_ALPHAS = [0.1,]  # a list of alphas to try
-QL_Q_INITS = [0,]  # a list of q-inits to try
-QL_EPSILONS = [0.1]  # a list of epsilons to try
-QL_EPSILON_DECAYS = [0.0001,] # a list of epsilon decays to try
-
-# # Configure other QL experiment parameters
-# QL_MAX_EPISODES = max(MAX_STEPS['ql'], NUM_TRIALS['ql'], 30000)
-# QL_MIN_EPISODES = QL_MAX_EPISODES * 0.01
-# QL_MAX_EPISODE_STEPS = 10000 # maximun steps per episode
-# QL_MIN_SUB_THETAS = 5 # num of consecutive episodes with little change before calling it converged
-# QL_ALPHAS = [0.1, 0.5, 0.9,] # a list of alphas to try
-# QL_Q_INITS = ['random', 0,] # a list of q-inits to try
-# QL_EPSILONS = [0.1, 0.3, 0.5,] # a list of epsilons to try
-# QL_EPSILON_DECAYS = [0.0001,] # a list of epsilon decays to try
+# List of alpha settings to try (initial, decay_rate, minimum)
+QL_ALPHAS = [
+    # {'initial': 0.1, 'decay': 0.001, 'min': 0.05},
+    {'initial': 0.3, 'decay': 0.001, 'min': 0.05},
+    # {'initial': 0.5, 'decay': 0.001, 'min': 0.05},
+]
+# List of epsilon settings to try (initial, decay_rate, minimum)
+QL_EPSILONS = [
+    {'initial': 0.25, 'decay': 0.001, 'min': 0.05},
+    {'initial': 0.5, 'decay': 0.001, 'min': 0.05},
+    {'initial': 0.75, 'decay': 0.001, 'min': 0.05},
+]
+QL_Q_INITS = [0, ]  # a list of q-inits to try (can also be 'random')
 
 
 # Configure logging
@@ -85,8 +84,7 @@ logger = logging.getLogger(__name__)
 
 def run_experiment(experiment_details, experiment, timing_key, verbose, timings, max_steps, num_trials,
                    theta=None, max_episodes=None, min_episodes=None, max_episode_steps=None,
-                   min_sub_thetas=None, discount_factors=None, alphas=None, q_inits=None, epsilons=None,
-                   epsilon_decays=None):
+                   min_sub_thetas=None, discount_factors=None, alphas=None, q_inits=None, epsilons=None):
 
     timings[timing_key] = {}
     for details in experiment_details:
@@ -96,7 +94,7 @@ def run_experiment(experiment_details, experiment, timing_key, verbose, timings,
             exp = experiment(details, verbose=verbose, max_steps=max_steps, num_trials=num_trials,
                              max_episodes=max_episodes, min_episodes=min_episodes, max_episode_steps=max_episode_steps,
                              min_sub_thetas=min_sub_thetas, theta=theta, discount_factors=discount_factors, alphas=alphas,
-                             q_inits=q_inits, epsilons=epsilons, epsilon_decays=epsilon_decays)
+                             q_inits=q_inits, epsilons=epsilons)
         else:  # NOT Q-Learning
             exp = experiment(details, verbose=verbose, max_steps=max_steps, num_trials=num_trials, theta=theta,
                              discount_factors=discount_factors)
@@ -159,14 +157,24 @@ if __name__ == '__main__':
         #     'readable_name': 'Cliff Walking (4x12)',
         # },
         {
-            'env': environments.get_racetrack_10x10( x_vel_limits=ENV_SETTINGS['racetrack']['x_vel_limits'],
-                                                     y_vel_limits=ENV_SETTINGS['racetrack']['y_vel_limits'],
-                                                     x_accel_limits=ENV_SETTINGS['racetrack']['x_accel_limits'],
-                                                     y_accel_limits=ENV_SETTINGS['racetrack']['y_accel_limits'],
-                                                     max_total_accel=ENV_SETTINGS['racetrack']['max_total_accel']),
+            'env': environments.get_racetrack_10x10(x_vel_limits=ENV_SETTINGS['racetrack']['x_vel_limits'],
+                                                    y_vel_limits=ENV_SETTINGS['racetrack']['y_vel_limits'],
+                                                    x_accel_limits=ENV_SETTINGS['racetrack']['x_accel_limits'],
+                                                    y_accel_limits=ENV_SETTINGS['racetrack']['y_accel_limits'],
+                                                    max_total_accel=ENV_SETTINGS['racetrack']['max_total_accel']),
             'name': 'racetrack_10x10',
             'readable_name': 'Racetrack (10x10)',
         },
+        {
+            'env': environments.get_racetrack_10x10_oil(x_vel_limits=ENV_SETTINGS['racetrack']['x_vel_limits'],
+                                                        y_vel_limits=ENV_SETTINGS['racetrack']['y_vel_limits'],
+                                                        x_accel_limits=ENV_SETTINGS['racetrack']['x_accel_limits'],
+                                                        y_accel_limits=ENV_SETTINGS['racetrack']['y_accel_limits'],
+                                                        max_total_accel=ENV_SETTINGS['racetrack']['max_total_accel']),
+            'name': 'racetrack_10x10_oil',
+            'readable_name': 'Racetrack (10x10 Oil)',
+        },
+        
         # {
         #     'env': environments.get_racetrack_20x10U(x_vel_limits=ENV_SETTINGS['racetrack']['x_vel_limits'],
         #                                              y_vel_limits=ENV_SETTINGS['racetrack']['y_vel_limits'],
@@ -215,8 +223,7 @@ if __name__ == '__main__':
         run_experiment(experiment_details, experiments.QLearnerExperiment, 'QL', verbose, timings, MAX_STEPS['ql'],
                        NUM_TRIALS['ql'], max_episodes=QL_MAX_EPISODES, max_episode_steps=QL_MAX_EPISODE_STEPS,
                        min_episodes=QL_MIN_EPISODES, min_sub_thetas=QL_MIN_SUB_THETAS, theta=QL_THETA,
-                       discount_factors=QL_DISCOUNTS, alphas=QL_ALPHAS, q_inits=QL_Q_INITS, epsilons=QL_EPSILONS,
-                       epsilon_decays=QL_EPSILON_DECAYS)
+                       discount_factors=QL_DISCOUNTS, alphas=QL_ALPHAS, q_inits=QL_Q_INITS, epsilons=QL_EPSILONS)
 
     # Generate plots
     if args.plot:

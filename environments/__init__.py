@@ -88,6 +88,11 @@ register(
     )
 
 register(
+    id='Racetrack10x10_oil-v0',
+    entry_point='environments:Racetrack',
+    )
+
+register(
     id='Racetrack20x10U-v0',
     entry_point='environments:Racetrack',
 )
@@ -176,6 +181,16 @@ def get_racetrack_10x10(x_vel_limits=RACETRACK_X_VEL_LIMITS, y_vel_limits=RACETR
             'x_accel_limits': x_accel_limits, 'y_accel_limits': y_accel_limits, 
             'max_total_accel': max_total_accel, }
     return gym.make("Racetrack10x10-v0", **kwargs)
+
+
+def get_racetrack_10x10_oil(x_vel_limits=RACETRACK_X_VEL_LIMITS, y_vel_limits=RACETRACK_Y_VEL_LIMITS,
+                        x_accel_limits=RACETRACK_X_ACCEL_LIMITS, y_accel_limits=RACETRACK_Y_ACCEL_LIMITS,
+                        max_total_accel=RACETRACK_MAX_TOTAL_ACCEL,):
+    kwargs={'track': '10x10_oil',
+            'x_vel_limits': x_vel_limits, 'y_vel_limits': y_vel_limits,
+            'x_accel_limits': x_accel_limits, 'y_accel_limits': y_accel_limits,
+            'max_total_accel': max_total_accel, }
+    return gym.make("Racetrack10x10_oil-v0", **kwargs)
 
 
 def get_racetrack_20x10U(x_vel_limits=RACETRACK_X_VEL_LIMITS, y_vel_limits=RACETRACK_Y_VEL_LIMITS,
