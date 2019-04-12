@@ -141,7 +141,8 @@ def plot_policy_map(title, policy, map_desc, color_map, direction_map, map_mask=
         map_mask = np.ones(policy.shape, dtype=bool)
 
     fig = plt.figure()
-    ax = fig.add_subplot(111, xlim=(0, policy.shape[1]), ylim=(0, policy.shape[0]))
+    # TODO: Does this xlim/ylim even do anything?
+    ax = fig.add_subplot(111)
     # FEATURE: Handle this better
     font_size = 'xx-small'
     # font_size = 'x-large'
@@ -152,7 +153,7 @@ def plot_policy_map(title, policy, map_desc, color_map, direction_map, map_mask=
         for j in range(policy.shape[1]):
             y = policy.shape[0] - i - 1
             x = j
-            p = plt.Rectangle([x, y], 1, 1, edgecolor='k', linewidth=0.1)
+            p = plt.Rectangle((x, y), 1, 1, edgecolor='k', linewidth=0.1)
             p.set_facecolor(color_map[map_desc[i, j]])
             ax.add_patch(p)
             if map_mask[i, j]:
@@ -184,7 +185,7 @@ def plot_value_map(title, v, map_desc, color_map, map_mask=None):
         map_mask = np.ones(v.shape, dtype=bool)
 
     fig = plt.figure()
-    ax = fig.add_subplot(111, xlim=(0, v.shape[1]), ylim=(0, v.shape[0]))
+    ax = fig.add_subplot(111)
     # FEATURE: Fix this better
     font_size = 'xx-small'
     # font_size = 'x-large'
@@ -233,6 +234,141 @@ def plot_value_map(title, v, map_desc, color_map, map_mask=None):
     plt.tight_layout()
 
     return watermark(plt)
+
+
+def plot_episodes(title, episodes, map_desc, color_map, direction_map,
+                  path_alpha=None, fig=None):
+    """
+    Draw the paths of multiple episodes on a map.
+
+    :param title:
+    :param episodes:
+    :param map_desc:
+    :param color_map:
+    :param direction_map:
+    :param add_actions:
+    :param add_velocity:
+    :param path_alpha:
+    :param fig:
+    :return:
+    """
+
+    if path_alpha is None:
+        path_alpha = 1.0 / len(episodes)
+
+    if fig is None:
+        fig, ax = plt.subplots()
+    else:
+        ax = fig.get_axes()[-1]
+
+    # Plot the background map first
+    plot_map(map_desc, color_map, fig=fig)
+
+    for episode in episodes:
+        fig = plot_episode(title=title, episode=episode, map_desc=map_desc, color_map=color_map, direction_map=direction_map, annotate_actions=False,
+                           annotate_velocity=False, path_alpha=path_alpha, fig=fig, plot_the_map=False)
+    # TODO: WATERMARK
+    return fig
+
+
+def plot_map(map_desc, color_map, fig=None):
+    if fig is None:
+        fig, ax = plt.subplots()
+    else:
+        ax = fig.get_axes()[0]
+
+    for i in range(map_desc.shape[0]):
+        for j in range(map_desc.shape[1]):
+            y = map_desc.shape[0] - i - 1
+            x = j
+            p = plt.Rectangle((x, y), 1, 1, edgecolor='k', linewidth=0.1)
+            p.set_facecolor(color_map[map_desc[i, j]])
+            ax.add_patch(p)
+    return fig
+
+
+def plot_episode(title, episode, map_desc, color_map, direction_map, annotate_actions=True, annotate_velocity=True,
+                 path_alpha=1.0, path_color='r', plot_the_map=True, fig=None, annotation_fontsize=6,
+                 annotation_color='r', annotation_offset=-0.5):
+    """
+    Plot an episode on the map, showing the path the agent has travelled during this episode.
+
+    :param title:
+    :param episode: List of (s,a,r,s') tuples describing an episode
+    :param map_desc:
+    :param color_map:
+    :param direction_map:
+    :param annotate_actions: If True, annotate all states with the action taken from them
+    :param annotate_velocity: If True, plot will be annotated with velocities for each transition (note this only works
+                              for an environment that has state of (x, y, vx, vy))
+    :param path_color: Color used for the trace of agent's path
+    :param path_alpha: Float alpha parameter passed to matplotlib when plotting the route.  If plotting multiple routes
+                        to same figure, use alpha<1.0 to improve clarity (more frequently travelled routes will be
+                        darker).
+    :param plot_the_map: If True, plot the background map as matplotlib rectangles (if calling this function to plot
+                         episodes, set this to False in all but one call to reduce plotting time
+    :param fig: Optional matplotlib figure object for plotting on an existing figure (will be created if omitted)
+    :param annotation_fontsize: Fontsize for all annotations
+    :param annotation_color: Color for all annotations
+    :param annotation_offset: Offset in x and y for all annotations (note this generally only works well as a negative)
+
+    :return: Matplotlib figure object used
+    """
+    if fig is None:
+        fig, ax = plt.subplots()
+    else:
+        ax = fig.get_axes()[0]
+
+    fig.suptitle(title)
+    if plot_the_map:
+        plot_map(map_desc, color_map, fig=fig)
+
+    for transition in episode:
+        # Transition traces go from s to s', but shift by +0.5, +0.5 because the map is plotted by the bottom left
+        # corner coordinate
+        x = transition[0][0] + 0.5
+        y = transition[0][1] + 0.5
+        x_end = transition[3][0] + 0.5
+        y_end = transition[3][1] + 0.5
+
+        # Plot the path
+        ax.plot((x, x_end), (y, y_end), '-o', color=annotation_color, alpha=path_alpha)
+
+        if annotate_velocity:
+            # Velocity is next velocity, so pull from the s-prime
+            v_xy = transition[3][2:]
+
+            # Annotate with the velocity of a move
+            arrow_xy = ((x + x_end) / 2, (y + y_end) / 2)
+            annotation_xy = (arrow_xy[0] + annotation_offset, arrow_xy[1] + annotation_offset)
+            ax.annotate(f'v={str(v_xy)}',
+                        xy=arrow_xy,
+                        xytext=annotation_xy,
+                        color=annotation_color,
+                        arrowprops={'arrowstyle': '->', 'color': annotation_color},
+                        horizontalalignment='right',
+                        verticalalignment='bottom',
+                        )
+
+        if annotate_actions:
+            action = transition[1]
+            arrow_xy = (x, y)
+            annotation_xy = (arrow_xy[0] + annotation_offset, arrow_xy[1] + annotation_offset)
+            ax.annotate(f'a={str(action)}',
+                        xy=arrow_xy,
+                        xytext=annotation_xy,
+                        color=annotation_color,
+                        arrowprops={'arrowstyle': '->', 'color': annotation_color},
+                        horizontalalignment='right',
+                        verticalalignment='bottom',
+                        )
+
+    ax.axis('off')
+    ax.set_xlim(0, map_desc.shape[1])
+    ax.set_ylim(0, map_desc.shape[0])
+    fig.tight_layout()
+    # TODO: WATERMARK
+    return fig
 
 
 def plot_time_vs_steps(title, df, xlabel="Steps", ylabel="Time (s)"):

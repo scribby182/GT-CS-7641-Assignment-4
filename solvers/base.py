@@ -15,22 +15,32 @@ logger = logging.getLogger(__name__)
 
 
 class EpisodeStats(object):
-    def __init__(self, num_episodes):
-        self.num_episodes = num_episodes
-        self.episode_lengths = np.zeros(num_episodes)
-        self.episode_times = np.zeros(num_episodes)
-        self.episode_rewards = np.zeros(num_episodes)
-        self.episode_deltas = np.zeros(num_episodes)
+    def __init__(self):
+        self.num_episodes = 0
+        self.episode_lengths = []
+        self.episode_times = []
+        self.episode_rewards = []
+        self.episode_deltas = []
+        self.episode_transitions = []
+
+    def add(self, episode_length, episode_time, episode_reward, episode_delta, episode_transitions):
+        self.episode_lengths.append(episode_length)
+        self.episode_times.append(episode_time)
+        self.episode_rewards.append(episode_reward)
+        self.episode_deltas.append(episode_delta)
+        self.episode_transitions.append(episode_transitions)
+        self.num_episodes += 1
 
     def to_csv(self, file_name):
         with open(file_name, 'w') as f:
-            f.write("episode,length,time,reward,delta\n")
+            f.write("episode,length,time,reward,delta,transitions\n")
             writer = csv.writer(f, delimiter=',')
             writer.writerows(zip(range(self.num_episodes), self.episode_lengths, self.episode_times,
-                                 self.episode_rewards, self.episode_deltas))
+                                 self.episode_rewards, self.episode_deltas, self.episode_transitions))
 
     @staticmethod
     def from_df(df):
+        raise NotImplementedError("This was broken by removing initialization and implementing .add.  Need to update")
         es = EpisodeStats(df.shape[0])
         es.episode_lengths = df['length'].values
         es.episode_times = df['time'].values
@@ -197,14 +207,15 @@ class BaseSolver(ABC):
 
     def run_policy(self, policy, max_steps=MAX_STEPS, render_during=False):
         """
-        Run once through the environment using a given policy, returning a numpy array of the rewards obtained.
+        Run once through the environment using a given policy, returning a numpy array of the rewards obtained and the transitions followed
         
         Side effect: Environment will be reset prior to running
 
         :param policy: The policy to run
         :param max_steps: The total number of steps to run. This helps prevent the agent getting "stuck"
         :param render_during: If true, render the env to stdout at each step
-        :return: An ndarray of rewards for each step
+        :return: Tuple of:
+            (An ndarray of rewards for each step, list of all transitions)
         """
         policy = np.argmax(policy, axis=1)
 
@@ -214,28 +225,45 @@ class BaseSolver(ABC):
         env = self.get_environment().new_instance()
         state = env.reset()
 
+        # State can be an integer index or a tuple, depending on the environment.  Result this by catching any
+        # state variables's that are tuples and convert them to state integer indices using the environment
+        # This approach is taken rather than asking for permission because tuples can be interpreted as a numpy
+        # index, so it is possible that a tuple state could incorrectly index the policy numpy array
+        if isinstance(state, tuple):
+            state = env.state_to_index[state]
+
+        # Store all transitions to pass back to caller
+        transitions = []
+
         done = False
         steps = 0
         while not done and steps < max_steps:
             if render_during:
                 env.render()
 
-            # State can be an integer index or a tuple, depending on the environment.  Result this by catching any
-            # state variables's that are tuples and convert them to state integer indices using the environment
-            # This approach is taken rather than asking for permission because tuples can be interpreted as a numpy
-            # index, so it is possible that a tuple state could incorrectly index the policy numpy array
-            if isinstance(state, tuple):
-                state = env.state_to_index[state]
-
             action = policy[state]
-            state, reward, done, info = env.step(action)
+            next_state, reward, done, info = env.step(action)
             rewards.append(reward)
             steps += 1
+
+            if isinstance(next_state, tuple):
+                next_state = env.state_to_index[next_state]
+
+            # Record transition (s, a, r, s').  Try to record as fully qualified transitions (tuples), but fall back to
+            # indices if possible
+            try:
+                this_transition = (self.env.index_to_state[state], self.env.index_to_action[action], reward,
+                                   self.env.index_to_state[next_state])
+            except AttributeError:
+                this_transition = (state, action, reward, next_state)
+            transitions.append(this_transition)
+
+            state = next_state
 
         if render_during:
             env.render()
 
-        return np.array(rewards)
+        return np.array(rewards), transitions
 
     def log(self, msg, *args):
         """

@@ -32,6 +32,7 @@ class EvaluationStats(object):
     def __init__(self):
         self.rewards = list()
         self.stat_history = list()
+        self.episodes = []
         self.reward_mean = 0
         self.reward_median = 0
         self.reward_std = 0
@@ -39,9 +40,10 @@ class EvaluationStats(object):
         self.reward_min = 0
         self.runs = 0
 
-    def add(self, reward):
+    def add(self, reward, episode):
         self.rewards.append(reward)
         self.compute()
+        self.episodes.append(episode)
 
     def compute(self):
         reward_array = np.array(self.rewards)
@@ -63,9 +65,10 @@ class EvaluationStats(object):
         self.compute()
         means, medians, stds, maxes, mins = zip(*self.stat_history)
         with open(file_name, 'w') as f:
-            f.write("step,reward,mean,median,std,max,min\n")
+            f.write("step,reward,mean,median,std,max,min,episode\n")
             writer = csv.writer(f, delimiter=',')
-            writer.writerows(zip(range(len(self.rewards)), self.rewards, means, medians, stds, maxes, mins))
+            writer.writerows(zip(range(len(self.rewards)), self.rewards, means, medians, stds, maxes, mins,
+                                 self.episodes))
 
     def __str__(self):
         return 'reward_mean: {}, reward_median: {}, reward_std: {}, reward_max: {}, reward_min: {}, runs: {}'.format(
@@ -310,7 +313,8 @@ class BaseExperiment(ABC):
         """
         stats = EvaluationStats()
         for i in range(num_trials):
-            stats.add(np.sum(solver.run_policy(policy)))
+            rewards, episode = solver.run_policy(policy)
+            stats.add(reward=np.sum(rewards), episode=episode)
             # TODO: Using mean reward here seems strange.  I think I'd prefer summed rewards.  But will that break something else?
             # stats.add(np.mean(solver.run_policy(policy)))
         stats.compute()

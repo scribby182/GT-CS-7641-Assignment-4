@@ -25,7 +25,7 @@ class QLearningSolver(BaseSolver):
         self._step_times = []
         self._last_delta = 0
         self._theta = theta
-        self._stats = EpisodeStats(max_episodes)
+        self._stats = EpisodeStats()
 
         # We want to wait for a few consecutive episodes to be below theta before we consider the model converged
         self._consecutive_sub_theta_episodes = 0
@@ -58,6 +58,9 @@ class QLearningSolver(BaseSolver):
         # Reset the environment and pick the first action
         state = self._env.reset()
 
+        # Record a list of all transitions
+        transitions = []
+
         # One step in the environment
         total_reward = 0.0
         episode_steps = 0
@@ -74,16 +77,11 @@ class QLearningSolver(BaseSolver):
             if isinstance(next_state, tuple):
                 next_state = self.get_environment().state_to_index[next_state]
 
-            # Update statistics
-            self._stats.episode_rewards[self._steps] += reward
-            self._stats.episode_lengths[self._steps] = t
-            self._stats.episode_times[self._steps] = time.clock() - start_time
 
             # TD Update
             best_next_action = np.argmax(self._Q[next_state])
             td_target = reward + self._discount_factor * self._Q[next_state, best_next_action]
             td_delta = td_target - self._Q[state, action]
-            self._stats.episode_deltas[self._steps] = td_delta
             self._Q[state, action] += self._alpha * td_delta
 
             # Decay epsilon
@@ -91,6 +89,15 @@ class QLearningSolver(BaseSolver):
 
             total_reward += reward
             self._last_delta = abs(self._alpha * td_delta)
+
+            # Record transition (s, a, r, s').  Try to record as fully qualified transitions (tuples), but fall back to
+            # indices if possible
+            try:
+                this_transition = (self._env.index_to_state[state], self._env.index_to_action[action], reward, 
+                                   self._env.index_to_state[next_state])
+            except AttributeError:
+                this_transition = (state, action, reward, next_state)
+            transitions.append(this_transition)
 
             episode_steps += 1
             if done:
@@ -103,7 +110,12 @@ class QLearningSolver(BaseSolver):
         else:
             self._consecutive_sub_theta_episodes = 0
 
-        self._step_times.append(time.clock() - start_time)
+        run_time = time.clock() - start_time
+        # Update statistics for this episode
+        self._stats.add(episode_length=t, episode_time=run_time, episode_reward=total_reward,
+                        episode_delta=self._last_delta, episode_transitions=transitions)
+
+        self._step_times.append(run_time)
 
         self._steps += 1
 
@@ -116,7 +128,7 @@ class QLearningSolver(BaseSolver):
         self._step_times = []
         self._last_delta = 0
         self._epsilon = self._initial_epsilon
-        self._stats = EpisodeStats(self._max_episodes)
+        self._stats = EpisodeStats()
         self._consecutive_sub_theta_episodes = 0
 
     def has_converged(self):
