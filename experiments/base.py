@@ -294,7 +294,8 @@ class BaseExperiment(ABC):
                 best_reward = reward
                 optimal_policy = policy
 
-            stats.add(policy, v, steps, step_time, reward, delta, converged)
+            # Steps returns number of steps occurred, but log this as the information for the previous step
+            stats.add(policy, v, steps-1, step_time, reward, delta, converged)
             step_count += 1
         if isinstance(solver, solvers.QLearningSolver):
             self.log('Steps: {} delta: {} alpha_final: {} eps_final: {} converged: {}'.format(step_count, solver._alpha,
