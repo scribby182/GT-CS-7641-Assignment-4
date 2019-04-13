@@ -21,6 +21,9 @@ OUTPUT_DIR = 'output'
 MAX_STEPS = 2000
 NUM_TRIALS = 100
 
+# Default for storing policies during experiment (can lead to very high memory usage in long experiments)
+STORE_EXPERIMENT_POLICIES = False
+
 def create_dirs():
     if not os.path.exists(os.path.join(os.getcwd(), OUTPUT_DIR)):
         os.makedirs(os.path.join(os.getcwd(), OUTPUT_DIR))
@@ -82,7 +85,8 @@ class EvaluationStats(object):
 
 
 class ExperimentStats(object):
-    def __init__(self):
+    def __init__(self, store_all_policies=STORE_EXPERIMENT_POLICIES):
+        self.store_policies = store_all_policies
         self.policies = list()
         self.vs = list()
         self.steps = list()
@@ -91,11 +95,20 @@ class ExperimentStats(object):
         self.deltas = list()
         self.converged_values = list()
         self.elapsed_time = 0
-        self.optimal_policy = None
+        self.best_policy = None
+        self.best_vs = None
+        self.number_changed_this_step = []
 
     def add(self, policy, v, step, step_time, reward, delta, converged):
-        self.policies.append(policy)
-        self.vs.append(v)
+        if self.store_policies is True:
+            self.policies.append(policy.copy())
+            self.vs.append(v.copy())
+        if self.best_policy is None:
+            self.number_changed_this_step.append(policy.shape[0])
+        else:
+            self.number_changed_this_step.append((np.argmax(policy, axis=1) != np.argmax(self.best_policy, axis=1)).sum())
+        self.best_policy = policy.copy()
+        self.best_vs = v.copy()
         self.steps.append(step)
         self.step_times.append(step_time)
         self.rewards.append(reward)
@@ -104,9 +117,10 @@ class ExperimentStats(object):
 
     def to_csv(self, file_name):
         with open(file_name, 'w') as f:
-            f.write("steps,time,reward,delta,converged\n")
+            f.write("steps,time,reward,delta,number_changed_this_step,converged\n")
             writer = csv.writer(f, delimiter=',')
-            writer.writerows(zip(self.steps, self.step_times, self.rewards, self.deltas, self.converged_values))
+            writer.writerows(zip(self.steps, self.step_times, self.rewards, self.deltas, self.number_changed_this_step,
+                                 self.converged_values))
 
     def pickle_results(self, file_name_base, map_shape, step_size=1, only_last=False):
         # TODO: Fix this.  This wont work for racetrack because it has more than just xy in state.  See policy map for
@@ -163,13 +177,13 @@ class ExperimentStats(object):
         if only_last:
             # Best policy decision for each state.  Shape as (*map_shape, all possible additional state dimensions for
             # each map location)
-            policy = np.argmax(self.policies[-1], axis=1).reshape(*map_desc.shape, -1)
-            v = self.vs[-1].reshape(*map_desc.shape, -1)
+            policy = np.argmax(self.best_policy, axis=1).reshape(*map_desc.shape, -1)
+            v = self.best_vs.reshape(*map_desc.shape, -1)
 
             # Make a state_index that holds the index corresponding to policy[i, j, [k]].  This is useful to quickly map
             # from an i,j back to a state in a few places below
             # places below.
-            state_index = np.arange(0, self.policies[-1].shape[0])
+            state_index = np.arange(0, self.best_policy.shape[0])
             state_index = state_index.reshape(*map_desc.shape, -1)
 
             # If policy.shape[2] == 1 then the state space is described entirely by the map (eg: state == location on
@@ -217,6 +231,8 @@ class ExperimentStats(object):
                 p.close()
 
         else:
+            raise NotImplementedError("This is broken because policy storage was turned off (see ExperimentStats.add)"
+                                      "to reduce memory usage.  Need to handle this to reenable")
             l = len(self.policies)
             if step_size == 1 and l > 20:
                 step_size = math.floor(l/20.0)
@@ -293,7 +309,7 @@ class BaseExperiment(ABC):
             policy, v, steps, step_time, reward, delta, converged = solver.step()
             if reward > best_reward:
                 best_reward = reward
-                optimal_policy = policy
+                # optimal_policy = policy
 
             # Steps returns number of steps occurred, but log this as the information for the previous step
             stats.add(policy, v, steps-1, step_time, reward, delta, converged)
@@ -308,7 +324,6 @@ class BaseExperiment(ABC):
                 'Steps: {} delta: {} converged: {}'.format(step_count, delta, converged))
 
         stats.elapsed_time = time.clock() - t
-        stats.optimal_policy = stats.policies[-1]  # optimal_policy
         return stats
 
     def run_policy_and_collect(self, solver, policy, num_trials=NUM_TRIALS):

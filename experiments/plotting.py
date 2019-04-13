@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 # DPI default used on plotting
 DPI = 150
 
+MAX_PATHS_ON_EPISODE_PLOT = 100
+
 INPUT_PATH = 'output'
 OUTPUT_PATH = os.path.join('output', 'images')
 REPORT_PATH = os.path.join('output', 'report')
@@ -237,7 +239,7 @@ def plot_value_map(title, v, map_desc, color_map, map_mask=None):
     return watermark(plt)
 
 
-def plot_episodes(title, episodes, map_desc, color_map, direction_map,
+def plot_episodes(title, episodes, map_desc, color_map, direction_map, max_episodes=MAX_PATHS_ON_EPISODE_PLOT,
                   path_alpha=None, fig=None):
     """
     Draw the paths of multiple episodes on a map.
@@ -247,15 +249,19 @@ def plot_episodes(title, episodes, map_desc, color_map, direction_map,
     :param map_desc:
     :param color_map:
     :param direction_map:
-    :param add_actions:
-    :param add_velocity:
+    :param max_episodes: Maximum number of epsides plotted.  If len(episodes)>max_episodes, max_episodes randomly chosen
+                         episodes will be plotted
     :param path_alpha:
     :param fig:
     :return:
     """
 
+    i_episodes = np.arange(len(episodes))
+    if len(episodes) > max_episodes:
+        i_episodes = np.random.choice(i_episodes, size=max_episodes, replace=False)
+
     if path_alpha is None:
-        path_alpha = max(1.0 / len(episodes), 0.02)
+        path_alpha = max(1.0 / len(i_episodes), 0.02)
 
     if fig is None:
         fig, ax = plt.subplots()
@@ -265,7 +271,8 @@ def plot_episodes(title, episodes, map_desc, color_map, direction_map,
     # Plot the background map first
     plot_map(map_desc, color_map, fig=fig)
 
-    for episode in episodes:
+    for i_episode in i_episodes:
+        episode = episodes[i_episode]
         fig = plot_episode(title=title, episode=episode, map_desc=map_desc, color_map=color_map,
                            direction_map=direction_map, annotate_actions=False, annotate_velocity=False,
                            path_alpha=path_alpha, fig=fig, plot_the_map=False)
@@ -635,9 +642,11 @@ def plot_data(data_files, envs, base_dir):
 
                 logger.info("Plotting episode stats with file base {}".format(file_base))
                 q_length.savefig(file_base.format('episode_length'), format='png', dpi=DPI)
+                plt.close(q_length)
                 q_reward.savefig(file_base.format('episode_reward'), format='png', dpi=DPI)
+                plt.close(q_reward)
                 q_time.savefig(file_base.format('episode_time'), format='png', dpi=DPI)
-                plt.close()
+                plt.close(q_time)
 
 
 def lookup_env_from_mdp(envs, mdp):
@@ -680,7 +689,7 @@ def plot_results(envs):
     params_df.to_csv(os.path.join(REPORT_PATH, 'params.csv'))
 
 
-def plot_paths(experiment_details, solver_name='VI', path_type='optimal', plot_one_in=5):
+def plot_paths(experiment_details, solver_name='VI', path_type='optimal', max_paths=MAX_PATHS_ON_EPISODE_PLOT):
     """
     Plot the optimal paths
 
@@ -690,7 +699,8 @@ def plot_paths(experiment_details, solver_name='VI', path_type='optimal', plot_o
     :param experiment_details: ExperimentDetails object, used to pass the environment and env_name
     :param solver_name: PI, VI, or QL, as appropriate
     :param path_type: Optimal (paths from _optimal.csv) or episodic (paths from QL's _episode.csv)
-    :param plot_one_in: Integer.  Plot one path in every plot_on_in (plotting all paths is time consuming)
+    :param max_paths: Integer maximum number of paths to be plotted (high numbers can lead to slow plotting).  If
+                      there are more paths than this, paths plotted will be chosen at random
     :return: None
     """
     dirname = os.path.join(INPUT_PATH, TO_PROCESS[solver_name]['path'])
@@ -708,7 +718,7 @@ def plot_paths(experiment_details, solver_name='VI', path_type='optimal', plot_o
         episodes_as_strings = list(df.episode.values)
 
         # Episodes are interpreted by pandas as a string, but they're really a list definition
-        episodes = [eval(e) for e in episodes_as_strings[::plot_one_in]]
+        episodes = [eval(e) for e in episodes_as_strings]
 
         output_filepath = os.path.join(OUTPUT_PATH, TO_PROCESS[solver_name]['path'],
                                        re.sub('.csv$', '_path.png', input_filename))
@@ -722,7 +732,7 @@ def plot_paths(experiment_details, solver_name='VI', path_type='optimal', plot_o
             f'{path_name_map[path_type]}'
 
         fig = plot_episodes(fig_title, episodes, experiment_details.env.desc, experiment_details.env.colors(),
-                            experiment_details.env.directions())
+                            experiment_details.env.directions(), max_episodes=max_paths)
         fig.savefig(output_filepath, format='png', dpi=DPI)
         plt.close(fig)
 
@@ -736,6 +746,8 @@ def delete_output_dir():
     
     
 def create_dirs():
+    if not os.path.exists(INPUT_PATH):
+        os.makedirs(INPUT_PATH)
     if not os.path.exists(REPORT_PATH):
         os.makedirs(REPORT_PATH)
 

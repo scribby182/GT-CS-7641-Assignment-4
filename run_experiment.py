@@ -63,19 +63,19 @@ QL_DISCOUNTS = [0.9]
 # Configure other QL experiment parameters
 QL_MAX_EPISODES = max(MAX_STEPS['ql'], NUM_TRIALS['ql'], 30000)
 QL_MIN_EPISODES = QL_MAX_EPISODES * 0.01
-QL_MAX_EPISODE_STEPS = 10000  # maximun steps per episode
-QL_MIN_SUB_THETAS = 5  # num of consecutive episodes with little change before calling it converged
+QL_MAX_EPISODE_STEPS = 1000  # maximun steps per episode
+QL_MIN_SUB_THETAS = 15  # num of consecutive episodes with little change before calling it converged
 # List of alpha settings to try (initial, decay_rate, minimum)
 QL_ALPHAS = [
-    # {'initial': 0.1, 'decay': 0.001, 'min': 0.05},
-    {'initial': 0.3, 'decay': 0.0005, 'min': 0.05},
-    # {'initial': 0.5, 'decay': 0.001, 'min': 0.05},
+    {'initial': 0.1, 'decay': 0.0005, 'min': 0.05},
+    # {'initial': 0.3, 'decay': 0.0005, 'min': 0.05},
+    # {'initial': 0.5, 'decay': 0.0005, 'min': 0.05},
 ]
 # List of epsilon settings to try (initial, decay_rate, minimum)
 QL_EPSILONS = [
     {'initial': 0.25, 'decay': 0.0005, 'min': 0.05},
-    # {'initial': 0.5, 'decay': 0.001, 'min': 0.05},
-    # {'initial': 0.75, 'decay': 0.001, 'min': 0.05},
+    # {'initial': 0.5, 'decay': 0.0005, 'min': 0.05},
+    # {'initial': 0.75, 'decay': 0.0005, 'min': 0.05},
 ]
 QL_Q_INITS = [0, ]  # a list of q-inits to try (can also be 'random')
 
@@ -155,12 +155,12 @@ if __name__ == '__main__':
     except PermissionError:
         # Sometimes the delete seems to linger.  Wait a few seconds then try again
         waittime = 5
-        logger.warning("Deletion failed due to permission error.  Waiting {waittime} seconds then trying again")
+        logger.warning(f"Deletion failed due to permission error.  Waiting {waittime} seconds then trying again")
         time.sleep(waittime)
+        plotting.create_dirs()
         experiments.value_iteration.create_dirs()
         experiments.q_learner.create_dirs()
         experiments.policy_iteration.create_dirs()
-        plotting.create_dirs()
         logger.info("Delete completed successfully in second attempt")
 
     logger.info("Creating MDPs")
@@ -271,7 +271,7 @@ if __name__ == '__main__':
     print('\n\n')
     logger.info("Running experiments")
 
-    timings = {} # Dict used to report experiment times (in seconds) at the end of the run
+    timings = {}  # Dict used to report experiment times (in seconds) at the end of the run
 
     # Run Policy Iteration (PI) experiment
     if args.policy or args.all:

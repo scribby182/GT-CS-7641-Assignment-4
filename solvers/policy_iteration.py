@@ -12,7 +12,8 @@ THETA = 0.0001
 # Adapted from https://github.com/dennybritz/reinforcement-learning/blob/master/DP/Policy%20Iteration%20Solution.ipynb
 class PolicyIterationSolver(BaseSolver):
 
-    def __init__(self, env, discount_factor=DISCOUNT, max_policy_eval_steps=None, theta=THETA, verbose=False):
+    def __init__(self, env, discount_factor=DISCOUNT, max_policy_eval_steps=None, theta=THETA, verbose=False,
+                 minimum_steps=0):
 
         self._env = env.unwrapped
 
@@ -24,6 +25,9 @@ class PolicyIterationSolver(BaseSolver):
         self._policy_stable = False
         self._max_policy_eval_steps = max_policy_eval_steps
         self._theta = theta
+        # Policy iteration shouldn't need a minimum steps (when it converges, it is always converged) but left this in
+        # since it was here before, just made it easy to zero.
+        self._minimum_steps = minimum_steps
 
         super(PolicyIterationSolver, self).__init__(verbose)
 
@@ -51,8 +55,7 @@ class PolicyIterationSolver(BaseSolver):
                                  max_steps=self._max_policy_eval_steps, theta=self._theta)
 
         # Set to True if steps > 10, false otherwise; will be set to False if we make any changes to the policy
-        self._policy_stable = self._steps > 10
-
+        self._policy_stable = self._steps >= self._minimum_steps
         delta = 0
         reward = 0  # float('-inf')
         # For each state...

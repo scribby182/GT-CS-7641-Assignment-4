@@ -83,7 +83,7 @@ class ValueIterationExperiment(BaseExperiment):
                                        map_desc, self._details.env.colors(), self._details.env.directions(),
                                        'Value Iteration', 'Step', self._details, only_last=True)
 
-            optimal_policy_stats = self.run_policy_and_collect(v, stats.optimal_policy, self._num_trials)
+            optimal_policy_stats = self.run_policy_and_collect(v, stats.best_policy, self._num_trials)
             self.log('{}'.format(optimal_policy_stats))
             optimal_policy_stats.to_csv(os.path.join(VI_DIR, '{}_{}_optimal.csv'.format(self._details.env_name, discount_factor)))
             with open(grid_file_name, 'a') as f:

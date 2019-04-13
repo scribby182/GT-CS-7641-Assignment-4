@@ -206,7 +206,6 @@ class BaseSolver(ABC):
             # Stop evaluating once our value function change is below a threshold (theta)
             if delta < theta:
                 break
-
         return np.array(V)
 
     def render_policy(self, policy):

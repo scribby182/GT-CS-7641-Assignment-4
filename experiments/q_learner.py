@@ -132,7 +132,7 @@ class QLearnerExperiment(BaseExperiment):
                         episode_stats = qs.get_stats()
                         episode_stats.to_csv(os.path.join(QL_DIR, f'{filename_base}_episode.csv'))
 
-                        optimal_policy_stats = self.run_policy_and_collect(qs, stats.optimal_policy, self._num_trials)
+                        optimal_policy_stats = self.run_policy_and_collect(qs, stats.best_policy, self._num_trials)
                         self.log('{}'.format(optimal_policy_stats))
                         optimal_policy_stats.to_csv(os.path.join(QL_DIR, f'{filename_base}_optimal.csv'))
 
