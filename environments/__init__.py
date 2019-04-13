@@ -88,6 +88,11 @@ register(
     entry_point='environments:Racetrack',
     )
 
+register(
+    id='Racetrack-v0',
+    entry_point='environments:Racetrack',
+    )
+
 
 def get_rewarding_frozen_lake_4x4_environment(step_prob=LAKE_STEP_PROB, step_rew=LAKE_STEP_REW, \
                                               hole_rew=LAKE_HOLE_REW, goal_rew=LAKE_GOAL_REW):
