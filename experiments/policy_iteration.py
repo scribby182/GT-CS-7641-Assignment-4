@@ -16,16 +16,18 @@ DISCOUNT_MAX = 0.9
 NUM_DISCOUNTS = 10
 THETA = 0.0001
 
-
 PI_DIR = os.path.join(OUTPUT_DIR, 'PI')
-if not os.path.exists(PI_DIR):
-    os.makedirs(PI_DIR)
 PKL_DIR = os.path.join(PI_DIR, 'pkl')
-if not os.path.exists(PKL_DIR):
-    os.makedirs(PKL_DIR)
 IMG_DIR = os.path.join(os.path.join(OUTPUT_DIR, 'images'), 'PI')
-if not os.path.exists(IMG_DIR):
-    os.makedirs(IMG_DIR)
+
+
+def create_dirs():
+    if not os.path.exists(PI_DIR):
+        os.makedirs(PI_DIR)
+    if not os.path.exists(PKL_DIR):
+        os.makedirs(PKL_DIR)
+    if not os.path.exists(IMG_DIR):
+        os.makedirs(IMG_DIR)
 
 
 class PolicyIterationExperiment(BaseExperiment):
@@ -51,7 +53,7 @@ class PolicyIterationExperiment(BaseExperiment):
 
         grid_file_name = os.path.join(PI_DIR, '{}_grid.csv'.format(self._details.env_name))
         with open(grid_file_name, 'w') as f:
-            f.write("discount_factor,time,steps,reward_mean,reward_median,reward_min,reward_max,reward_std\n")
+            f.write("params,discount_factor,time,steps,reward_mean,reward_median,reward_min,reward_max,reward_std\n")
 
         dims = len(self._discount_factors)
         self.log("Searching PI in {} dimensions".format(dims))
@@ -82,6 +84,7 @@ class PolicyIterationExperiment(BaseExperiment):
                                                                                         discount_factor)))
             with open(grid_file_name, 'a') as f:
                 f.write('"{}",{},{},{},{},{},{},{}\n'.format(
+                    json.dumps({'discount_factor': discount_factor}).replace('"', '""'),
                     discount_factor,
                     time.clock() - t,
                     len(optimal_policy_stats.rewards),

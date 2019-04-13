@@ -4,7 +4,7 @@ import time
 import numpy as np
 
 from .base import BaseExperiment, OUTPUT_DIR
-
+from experiments.plotting import params_to_filename_base
 import solvers
 
 
@@ -27,16 +27,18 @@ NUM_DISCOUNTS = 10
 MIN_SUB_THETAS = 5
 THETA = 0.0001
 
-
 QL_DIR = os.path.join(OUTPUT_DIR, 'QL')
-if not os.path.exists(QL_DIR):
-    os.makedirs(QL_DIR)
 PKL_DIR = os.path.join(QL_DIR, 'pkl')
-if not os.path.exists(PKL_DIR):
-    os.makedirs(PKL_DIR)
 IMG_DIR = os.path.join(os.path.join(OUTPUT_DIR, 'images'), 'QL')
-if not os.path.exists(IMG_DIR):
-    os.makedirs(IMG_DIR)
+
+
+def create_dirs():
+    if not os.path.exists(QL_DIR):
+        os.makedirs(QL_DIR)
+    if not os.path.exists(PKL_DIR):
+        os.makedirs(PKL_DIR)
+    if not os.path.exists(IMG_DIR):
+        os.makedirs(IMG_DIR)
 
 
 class QLearnerExperiment(BaseExperiment):
@@ -77,7 +79,7 @@ class QLearnerExperiment(BaseExperiment):
 
         grid_file_name = os.path.join(QL_DIR, '{}_grid.csv'.format(self._details.env_name))
         with open(grid_file_name, 'w') as f:
-            f.write("q_init,alpha_initial,alpha_min,alpha_decay,epsilon_initial,epsilon_min,epsilon_decay,"
+            f.write("params,q_init,alpha_initial,alpha_min,alpha_decay,epsilon_initial,epsilon_min,epsilon_decay,"
                     "discount_factor,time,steps,reward_mean,reward_median,reward_min,reward_max,reward_std\n")
 
         dims = len(self._discount_factors) * len(self._alphas) * len(self._q_inits) * len(self._epsilons)
@@ -110,9 +112,11 @@ class QLearnerExperiment(BaseExperiment):
                         stats = self.run_solver_and_collect(qs, self.convergence_check_fn)
 
                         self.log("Took {} episodes".format(len(stats.steps)))
-                        filename_base = f'{self._details.env_name}_a{alpha["initial"]}-{alpha["min"]}x{alpha["decay"]}'\
-                                        f'_{q_init}_e{epsilon["initial"]}-{epsilon["min"]}x{epsilon["decay"]}' \
-                                        f'_{discount_factor}'
+                            
+                        filename_base = params_to_filename_base(self._details.env_name,
+                                                            alpha["initial"], alpha["min"], alpha["decay"], q_init, 
+                                                            epsilon["initial"], epsilon["min"], epsilon["decay"], 
+                                                            discount_factor)
 
                         stats.to_csv(os.path.join(QL_DIR, f'{filename_base}.csv'))
                         stats.pickle_results(os.path.join(PKL_DIR, f'{filename_base}_{{}}.pkl'), map_desc.shape,
@@ -136,8 +140,19 @@ class QLearnerExperiment(BaseExperiment):
                             # Data as an iterable of numbers and such
                             # TODO: Replace these instances where headers are above and numbers written down here with
                             # a csv or pandas to csv call?
+                            # Single group version (for legacy support)
+                            params = json.dumps({
+                                    'q_init': q_init,
+                                    'alpha_initial': alpha['initial'],
+                                    'alpha_min': alpha['min'],
+                                    'alpha_decay': alpha['decay'],
+                                    'epsilon_initial': epsilon['initial'],
+                                    'epsilon_min': epsilon['min'],
+                                    'epsilon_decay': epsilon['decay'],
+                                    'discount_factor': discount_factor,
+                                }).replace('"', '""')
                             data = [
-                                q_init, alpha['initial'], alpha['min'], alpha['decay'], epsilon['initial'],
+                                f'"{params}"', q_init, alpha['initial'], alpha['min'], alpha['decay'], epsilon['initial'],
                                 epsilon['min'], epsilon['decay'], discount_factor, time.clock() - t,
                                 len(optimal_policy_stats.rewards), optimal_policy_stats.reward_mean,
                                 optimal_policy_stats.reward_median, optimal_policy_stats.reward_min,
@@ -147,4 +162,3 @@ class QLearnerExperiment(BaseExperiment):
                             data_as_string = ",".join([str(d) for d in data])
                             f.write(f'{data_as_string}\n')
                         runs += 1
-

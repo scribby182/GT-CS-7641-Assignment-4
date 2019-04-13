@@ -18,14 +18,15 @@ from shutil import copyfile
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# DPI default used on plotting
+DPI = 150
 
 INPUT_PATH = 'output'
 OUTPUT_PATH = os.path.join('output', 'images')
 REPORT_PATH = os.path.join('output', 'report')
 
-if not os.path.exists(REPORT_PATH):
-    os.makedirs(REPORT_PATH)
 
+# This should be moved somewhere central.  Shouldn't this be in run_experiment, or shared with run_experiment?
 TO_PROCESS = {
     'PI': {
         'path': 'PI',
@@ -449,13 +450,13 @@ def fetch_mdp_name(file, regexp):
     return mdp_name, ' '.join(map(lambda x: x.capitalize(), mdp_name.split('_')))
 
 
-def process_params(problem_name, params):
-    param_str = '{}'.format(params['discount_factor'])
-    if problem_name == 'QL':
-        param_str = '{}_{}_{}_{}_{}'.format(params['alpha'], params['q_init'], params['epsilon'],
-                                            params['epsilon_decay'], params['discount_factor'])
-
-    return param_str
+# def process_params(problem_name, params):
+#     param_str = '{}'.format(params['discount_factor'])
+#     if problem_name == 'QL':
+#         param_str = '{}_{}_{}_{}_{}'.format(params['alpha'], params['q_init'], params['epsilon'],
+#                                             params['epsilon_decay'], params['discount_factor'])
+#
+#     return param_str
 
 
 def find_optimal_params(problem_name, base_dir, file_regex):
@@ -467,6 +468,7 @@ def find_optimal_params(problem_name, base_dir, file_regex):
         mdp, readable_mdp = fetch_mdp_name(f, file_regex)
         logger.info("MDP: {}, Readable MDP: {}".format(mdp, readable_mdp))
         df = pd.read_csv(f)
+        # Why copy this?
         best = df.copy()
         # Attempt to find the best params. First look at the reward mean, then median, then max. If at any point we
         # have more than one result as "best", try the next criterion
@@ -489,7 +491,7 @@ def find_optimal_params(problem_name, base_dir, file_regex):
             'readable_name': readable_mdp,
             'index': best_index,
             'params': params,
-            'param_str': process_params(problem_name, params)
+            'param_str': params_to_filename_base(**params)
         }
 
     return best_params
@@ -500,7 +502,7 @@ def find_policy_images(base_dir, params):
     policy_images = {}
     for mdp in params:
         mdp_params = params[mdp]
-        fileStart = os.path.join(base_dir, '{}_{}'.format(mdp_params['name'], mdp_params['param_str']))
+        fileStart = os.path.join(base_dir, '{}{}'.format(mdp_params['name'], mdp_params['param_str']))
         image_files = glob.glob(fileStart + '*.png')
 
         if len(image_files) == 2:
@@ -530,9 +532,10 @@ def find_data_files(base_dir, params):
     data_files = {}
     for mdp in params:
         mdp_params = params[mdp]
-        files = glob.glob(os.path.join(base_dir, '{}_{}.csv'.format(mdp_params['name'], mdp_params['param_str'])))
-        optimal_files = glob.glob(os.path.join(base_dir, '{}_{}_optimal.csv'.format(mdp_params['name'], mdp_params['param_str'])))
-        episode_files = glob.glob(os.path.join(base_dir, '{}_{}_episode.csv'.format(mdp_params['name'], mdp_params['param_str'])))
+        print('find data files: ' + '{}{}.csv'.format(mdp_params['name'], mdp_params['param_str']))
+        files = glob.glob(os.path.join(base_dir, '{}{}.csv'.format(mdp_params['name'], mdp_params['param_str'])))
+        optimal_files = glob.glob(os.path.join(base_dir, '{}{}_optimal.csv'.format(mdp_params['name'], mdp_params['param_str'])))
+        episode_files = glob.glob(os.path.join(base_dir, '{}{}_episode.csv'.format(mdp_params['name'], mdp_params['param_str'])))
         logger.info("files {}".format(files))
         logger.info("optimal_files {}".format(optimal_files))
         logger.info("episode_files {}".format(episode_files))
@@ -607,7 +610,7 @@ def plot_data(data_files, envs, base_dir):
             file_name = os.path.join(os.path.join(base_dir, problem_name), '{}_time.png'.format(mdp))
             p = plot_time_vs_steps(title, df, xlabel=step_term)
             p = watermark(p)
-            p.savefig(file_name, format='png', dpi=150)
+            p.savefig(file_name, format='png', dpi=DPI)
             p.close()
 
             reward_term = 'Reward'
@@ -620,7 +623,7 @@ def plot_data(data_files, envs, base_dir):
             file_name = os.path.join(os.path.join(base_dir, problem_name), '{}_reward_delta.png'.format(mdp))
             p = plot_reward_and_delta_vs_steps(title, df, ylabel=reward_term, xlabel=step_term)
             p = watermark(p)
-            p.savefig(file_name, format='png', dpi=150)
+            p.savefig(file_name, format='png', dpi=DPI)
             p.close()
 
             if problem_name == 'QL' and 'episode_file' in mdp_files:
@@ -631,9 +634,9 @@ def plot_data(data_files, envs, base_dir):
                 file_base = os.path.join(os.path.join(base_dir, problem_name), '{}_{}.png'.format(mdp, '{}'))
 
                 logger.info("Plotting episode stats with file base {}".format(file_base))
-                q_length.savefig(file_base.format('episode_length'), format='png', dpi=150)
-                q_reward.savefig(file_base.format('episode_reward'), format='png', dpi=150)
-                q_time.savefig(file_base.format('episode_time'), format='png', dpi=150)
+                q_length.savefig(file_base.format('episode_length'), format='png', dpi=DPI)
+                q_reward.savefig(file_base.format('episode_reward'), format='png', dpi=DPI)
+                q_time.savefig(file_base.format('episode_time'), format='png', dpi=DPI)
                 plt.close()
 
 
@@ -676,3 +679,96 @@ def plot_results(envs):
     params_df = pd.DataFrame(best_params)
     params_df.to_csv(os.path.join(REPORT_PATH, 'params.csv'))
 
+
+def plot_paths(experiment_details, solver_name='VI', path_type='optimal', plot_one_in=5):
+    """
+    Plot the optimal paths
+
+    As a simple implementation, this searches for any CSV files that start with the env_name and end with the right
+    path_type.  Could be improved to target specific settings rather than globbing all matches.
+
+    :param experiment_details: ExperimentDetails object, used to pass the environment and env_name
+    :param solver_name: PI, VI, or QL, as appropriate
+    :param path_type: Optimal (paths from _optimal.csv) or episodic (paths from QL's _episode.csv)
+    :param plot_one_in: Integer.  Plot one path in every plot_on_in (plotting all paths is time consuming)
+    :return: None
+    """
+    dirname = os.path.join(INPUT_PATH, TO_PROCESS[solver_name]['path'])
+
+    path_files = [f for f in os.listdir(dirname) if 
+                  os.path.isfile(os.path.join(dirname, f)) and
+                  f.startswith(experiment_details.env_name) and
+                  f.endswith(f"_{path_type}.csv")]
+
+    for input_filename in path_files:
+        input_filepath = os.path.join(dirname, input_filename)
+
+        # Use Pandas to read the file and grab the episode data
+        df = pd.read_csv(input_filepath)
+        episodes_as_strings = list(df.episode.values)
+
+        # Episodes are interpreted by pandas as a string, but they're really a list definition
+        episodes = [eval(e) for e in episodes_as_strings[::plot_one_in]]
+
+        output_filepath = os.path.join(OUTPUT_PATH, TO_PROCESS[solver_name]['path'],
+                                       re.sub('.csv$', '_path.png', input_filename))
+
+        path_name_map = {
+            'optimal': 'Optimal Paths',
+            'episode': "Learning Paths",
+        }
+
+        fig_title = f'{experiment_details.env_readable_name}: {problem_name_to_descriptive_name(solver_name)} - ' \
+            f'{path_name_map[path_type]}'
+
+        fig = plot_episodes(fig_title, episodes, experiment_details.env.desc, experiment_details.env.colors(),
+                            experiment_details.env.directions())
+        fig.savefig(output_filepath, format='png', dpi=DPI)
+        plt.close(fig)
+
+def delete_output_dir():
+    """
+    Delete any previous script output in INPUT_PATH
+
+    :return: None
+    """
+    shutil.rmtree(INPUT_PATH)
+    
+    
+def create_dirs():
+    if not os.path.exists(REPORT_PATH):
+        os.makedirs(REPORT_PATH)
+
+
+# This should probably be somewhere else, but there was a circular import happening if I put it in experiments.q_learner
+def params_to_filename_base(env_name=None, alpha_initial=None, alpha_min=None, alpha_decay=None, q_init=None, 
+                            epsilon_initial=None, epsilon_min=None, epsilon_decay=None, discount_factor=None):
+    ret = ''
+    
+    if env_name is not None:
+        ret += f'{env_name}'
+    if alpha_initial is not None:
+        ret += f'_a{alpha_initial}'
+        
+    if alpha_min is not None:
+        ret += f'-{alpha_min}'
+        
+    if alpha_decay is not None:
+        ret += f'x{alpha_decay}'
+        
+    if q_init is not None:
+        ret += f'_{q_init}'
+        
+    if epsilon_initial is not None:
+        ret += f'_e{epsilon_initial}'
+        
+    if epsilon_min is not None:
+        ret += f'-{epsilon_min}'
+        
+    if epsilon_decay is not None:
+        ret += f'x{epsilon_decay}'
+        
+    if discount_factor is not None:
+        ret += f'_{discount_factor}'
+        
+    return ret

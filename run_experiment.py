@@ -3,6 +3,7 @@ from datetime import datetime
 import logging
 import random as rand
 import numpy as np
+import time
 
 import environments
 import experiments
@@ -35,17 +36,19 @@ ENV_SETTINGS = {
               }
 
 # Configure max steps per experiment
-MAX_STEPS = { 'pi': 5000, 
-              'vi': 200,
-              'ql': 20000, 
-            }
+MAX_STEPS = {
+    'pi': 5000,
+    'vi': 5000,
+    'ql': 20000,
+    }
 
 # Configure trials per experiment (number of times we run the optimal policy to evaluate its effectiveness)
 # Is this interpretation correct???
-NUM_TRIALS = { 'pi': 1000,
-               'vi': 100,
-               'ql': 1000,
-             }
+NUM_TRIALS = {
+    'pi': 100,
+    'vi': 100,
+    'ql': 100,
+    }
 
 # Configure thetas per experiment
 PI_THETA = 0.00001
@@ -65,14 +68,14 @@ QL_MIN_SUB_THETAS = 5  # num of consecutive episodes with little change before c
 # List of alpha settings to try (initial, decay_rate, minimum)
 QL_ALPHAS = [
     # {'initial': 0.1, 'decay': 0.001, 'min': 0.05},
-    {'initial': 0.3, 'decay': 0.001, 'min': 0.05},
+    {'initial': 0.3, 'decay': 0.0005, 'min': 0.05},
     # {'initial': 0.5, 'decay': 0.001, 'min': 0.05},
 ]
 # List of epsilon settings to try (initial, decay_rate, minimum)
 QL_EPSILONS = [
-    {'initial': 0.25, 'decay': 0.001, 'min': 0.05},
-    {'initial': 0.5, 'decay': 0.001, 'min': 0.05},
-    {'initial': 0.75, 'decay': 0.001, 'min': 0.05},
+    {'initial': 0.25, 'decay': 0.0005, 'min': 0.05},
+    # {'initial': 0.5, 'decay': 0.001, 'min': 0.05},
+    # {'initial': 0.75, 'decay': 0.001, 'min': 0.05},
 ]
 QL_Q_INITS = [0, ]  # a list of q-inits to try (can also be 'random')
 
@@ -114,6 +117,9 @@ if __name__ == '__main__':
     parser.add_argument('--ql', action='store_true', help='Run the Q-Learner (QL) experiment')
     parser.add_argument('--all', action='store_true', help='Run all experiments')
     parser.add_argument('--plot', action='store_true', help='Plot data results')
+    parser.add_argument('--plot_paths', action='store_true', help='Plot episodic and optimal paths')
+    parser.add_argument('--delete_output', action='store_true', help='Delete any previous script output')
+    # TODO: There are if verbose statements below.  Can't logger handle verbosity levels?
     parser.add_argument('--verbose', action='store_true', help='If true, provide verbose output')
     args = parser.parse_args()
     verbose = args.verbose
@@ -126,6 +132,36 @@ if __name__ == '__main__':
         logger.info("Using seed {}".format(seed))
         np.random.seed(seed)
         rand.seed(seed)
+
+    # List to make note of which solvers have run
+    solvers_run = []
+
+    # Clean up previous output
+    if args.delete_output:
+        logger.info("Deleting previous output")
+        logger.info("----------")
+        try:
+            plotting.delete_output_dir()
+        except FileNotFoundError:
+            pass
+    # Create directories required be all scripts (better way to do this?  They used to be in the initialization of
+    # the imports, but that's bad and prevents us from nicely deleting here
+    try:
+        experiments.value_iteration.create_dirs()
+        experiments.q_learner.create_dirs()
+        experiments.policy_iteration.create_dirs()
+        experiments.base.create_dirs()
+        plotting.create_dirs()
+    except PermissionError:
+        # Sometimes the delete seems to linger.  Wait a few seconds then try again
+        waittime = 5
+        logger.warning("Deletion failed due to permission error.  Waiting {waittime} seconds then trying again")
+        time.sleep(waittime)
+        experiments.value_iteration.create_dirs()
+        experiments.q_learner.create_dirs()
+        experiments.policy_iteration.create_dirs()
+        plotting.create_dirs()
+        logger.info("Delete completed successfully in second attempt")
 
     logger.info("Creating MDPs")
     logger.info("----------")
@@ -242,12 +278,14 @@ if __name__ == '__main__':
         print('\n\n')
         run_experiment(experiment_details, experiments.PolicyIterationExperiment, 'PI', verbose, timings,
                        MAX_STEPS['pi'], NUM_TRIALS['pi'], theta=PI_THETA, discount_factors=PI_DISCOUNTS)
+        solvers_run.append('PI')
 
     # Run Value Iteration (VI) experiment
     if args.value or args.all:
         print('\n\n')
         run_experiment(experiment_details, experiments.ValueIterationExperiment, 'VI', verbose, timings,
                        MAX_STEPS['vi'], NUM_TRIALS['vi'], theta=VI_THETA, discount_factors=VI_DISCOUNTS)
+        solvers_run.append('VI')
 
     # Run Q-Learning (QL) experiment
     if args.ql or args.all:
@@ -256,6 +294,7 @@ if __name__ == '__main__':
                        NUM_TRIALS['ql'], max_episodes=QL_MAX_EPISODES, max_episode_steps=QL_MAX_EPISODE_STEPS,
                        min_episodes=QL_MIN_EPISODES, min_sub_thetas=QL_MIN_SUB_THETAS, theta=QL_THETA,
                        discount_factors=QL_DISCOUNTS, alphas=QL_ALPHAS, q_inits=QL_Q_INITS, epsilons=QL_EPSILONS)
+        solvers_run.append('QL')
 
     # Generate plots
     if args.plot:
@@ -264,6 +303,20 @@ if __name__ == '__main__':
             logger.info("----------")
         logger.info("Plotting results")
         plotting.plot_results(envs)
+
+    if args.plot_paths:
+        print('\n\n')
+        if verbose:
+            logger.info("----------")
+        logger.info("Plotting optimal and episodic paths")
+        for solver_name in solvers_run:
+            logger.info(f"Plotting optimal paths for {solver_name}")
+            for this_experiment in experiment_details:
+                plotting.plot_paths(this_experiment, solver_name=solver_name, path_type='optimal')
+            if solver_name == "QL":
+                logger.info(f"Plotting episodic paths for {solver_name}")
+                for this_experiment in experiment_details:
+                    plotting.plot_paths(this_experiment, solver_name=solver_name, path_type='episode')
 
     # Output timing information
     print('\n\n')

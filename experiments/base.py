@@ -21,11 +21,11 @@ OUTPUT_DIR = 'output'
 MAX_STEPS = 2000
 NUM_TRIALS = 100
 
-
-if not os.path.exists(os.path.join(os.getcwd(), OUTPUT_DIR)):
-    os.makedirs(os.path.join(os.getcwd(), OUTPUT_DIR))
-if not os.path.exists(os.path.join(os.path.join(os.getcwd(), OUTPUT_DIR), 'images')):
-    os.makedirs(os.path.join(os.path.join(os.getcwd(), OUTPUT_DIR), 'images'))
+def create_dirs():
+    if not os.path.exists(os.path.join(os.getcwd(), OUTPUT_DIR)):
+        os.makedirs(os.path.join(os.getcwd(), OUTPUT_DIR))
+    if not os.path.exists(os.path.join(os.path.join(os.getcwd(), OUTPUT_DIR), 'images')):
+        os.makedirs(os.path.join(os.path.join(os.getcwd(), OUTPUT_DIR), 'images'))
 
 
 class EvaluationStats(object):
@@ -109,8 +109,9 @@ class ExperimentStats(object):
             writer.writerows(zip(self.steps, self.step_times, self.rewards, self.deltas, self.converged_values))
 
     def pickle_results(self, file_name_base, map_shape, step_size=1, only_last=False):
-        # TODO: Fix this
-        print("RESULTS NOT PICKLED - NEED TO FIX THIS")
+        # TODO: Fix this.  This wont work for racetrack because it has more than just xy in state.  See policy map for
+        # nethod to fix?
+        logger.warning("Results pickling disabled due to bug.  Results not pickled")
         # if only_last:
         #     policy = np.reshape(np.argmax(self.policies[-1], axis=1), map_shape)
         #     v = self.vs[-1].reshape(map_shape)
@@ -298,8 +299,9 @@ class BaseExperiment(ABC):
             stats.add(policy, v, steps-1, step_time, reward, delta, converged)
             step_count += 1
         if isinstance(solver, solvers.QLearningSolver):
-            self.log('Steps: {} delta: {} alpha_final: {} eps_final: {} converged: {}'.format(step_count, solver._alpha,
-                                                                                              solver._epsilon, delta,
+            self.log('Steps: {} delta: {} alpha_final: {} eps_final: {} converged: {}'.format(step_count, delta,
+                                                                                              solver._alpha,
+                                                                                              solver._epsilon, 
                                                                                               converged))
         else:
             self.log(
