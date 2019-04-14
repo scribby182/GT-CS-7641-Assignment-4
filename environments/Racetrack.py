@@ -3,7 +3,7 @@ import numpy as np
 from gym.envs.toy_text import discrete
 
 
-REWARDS = {
+RACETRACK_DEFAULT_REWARDS = {
     'crash': -100,
     'time': -1,
     'finish': 100,
@@ -12,11 +12,11 @@ REWARDS = {
 
 # Character map for the map characters (say that 10 times fast!)
 CHAR_MAP = {
-    "W": {'start_prob': 0., 'reward': REWARDS['crash'], 'terminal': True, 'color': 'forestgreen'},
-    "S": {'start_prob': 1., 'reward': REWARDS['time'], 'terminal': False, 'color': 'dodgerblue'},
-    " ": {'start_prob': 0., 'reward': REWARDS['time'], 'terminal': False, 'color': 'darkgray'},
-    "F": {'start_prob': 0., 'reward': REWARDS['finish'], 'terminal': True, 'color': 'gold'},
-    "O": {'start_prob': 0., 'reward': REWARDS['time'], 'terminal': False, 'color': 'gray', 'chance_to_slip': 0.25}
+    "W": {'start_prob': 0., 'reward': RACETRACK_DEFAULT_REWARDS['crash'], 'terminal': True, 'color': 'forestgreen'},
+    "S": {'start_prob': 1., 'reward': RACETRACK_DEFAULT_REWARDS['time'], 'terminal': False, 'color': 'dodgerblue'},
+    " ": {'start_prob': 0., 'reward': RACETRACK_DEFAULT_REWARDS['time'], 'terminal': False, 'color': 'darkgray'},
+    "F": {'start_prob': 0., 'reward': RACETRACK_DEFAULT_REWARDS['finish'], 'terminal': True, 'color': 'gold'},
+    "O": {'start_prob': 0., 'reward': RACETRACK_DEFAULT_REWARDS['time'], 'terminal': False, 'color': 'gray', 'chance_to_slip': 0.25}
 }
 
 TRACKS = {
@@ -44,6 +44,23 @@ TRACKS = {
         "WWWWWWWWWW",
         "WWWWWWWWWW",
     ],
+    '15x15_basic': [
+        "WWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWW",
+        "WW         FWW",
+        "WW          WW",
+        "WW          WW",
+        "WW          WW",
+        "WW          WW",
+        "WW          WW",
+        "WW          WW",
+        "WW          WW",
+        "WW          WW",
+        "WW          WW",
+        "WWS         WW",
+        "WWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWW",
+    ],
     '20x20_basic': [
         "WWWWWWWWWWWWWWWWWWWW",
         "WWWWWWWWWWWWWWWWWWWW",
@@ -63,6 +80,28 @@ TRACKS = {
         "WW                WW",
         "WW                WW",
         "WWS               WW",
+        "WWWWWWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWWWWWW",
+    ],
+    '20x20_all_oil': [
+        "WWWWWWWWWWWWWWWWWWWW",
+        "WWWWWWWWWWWWWWWWWWWW",
+        "WWOOOOOOOOOOOOOOOFWW",
+        "WWOOOOOOOOOOOOOOOOWW",
+        "WWOOOOOOOOOOOOOOOOWW",
+        "WWOOOOOOOOOOOOOOOOWW",
+        "WWOOOOOOOOOOOOOOOOWW",
+        "WWOOOOOOOOOOOOOOOOWW",
+        "WWOOOOOOOOOOOOOOOOWW",
+        "WWOOOOOOOOOOOOOOOOWW",
+        "WWOOOOOOOOOOOOOOOOWW",
+        "WWOOOOOOOOOOOOOOOOWW",
+        "WWOOOOOOOOOOOOOOOOWW",
+        "WWOOOOOOOOOOOOOOOOWW",
+        "WWOOOOOOOOOOOOOOOOWW",
+        "WWOOOOOOOOOOOOOOOOWW",
+        "WWOOOOOOOOOOOOOOOOWW",
+        "WWSOOOOOOOOOOOOOOOWW",
         "WWWWWWWWWWWWWWWWWWWW",
         "WWWWWWWWWWWWWWWWWWWW",
     ],
@@ -101,12 +140,12 @@ TRACKS = {
     '20x10_U': [
         "WWWWWWWWWWWWWWWWWWWW",
         "WWWWWWWWWWWWWWWWWWWW",
-        "WWW               WW",
+        "WWW     OOOO      WW",
         "WWW     WWWW      WW",
+        "WWOOOOWWWWWWWWOOOOWW",
+        "WWOOOWWWWWWWWWWOOOWW",
         "WW    WWWWWWWW    WW",
-        "WW   WWWWWWWWWW   WW",
-        "WW    WWWWWWWW    WW",
-        "WW   SWWWWWWWW    WW",
+        "WW      SWWWWW    WW",
         "WWWWWWWWWWWWWWFFFFWW",
         "WWWWWWWWWWWWWWFFFFWW",
     ],
@@ -133,9 +172,9 @@ TRACKS = {
         "WW WWWWWWWWWWWWWW WW",
         "WW WWWWWWWWWWWWWW WW",
         "WW WWWWWWWWWWWWWW WW",
-        "WW WWW  WWWW  WWW WW",
-        "WW WW WW WW WW WW WW",
-        "WWS  WWWW  WWWW  FWW",
+        "WW WWWWWOOOOWWWWW WW",
+        "WWW WWWOWWWWOWWW WWW",
+        "WWWW  SWWWWWWF  WWWW",
         "WWWWWWWWWWWWWWWWWWWW",
         "WWWWWWWWWWWWWWWWWWWW",
     ]
@@ -145,7 +184,7 @@ TRACKS = {
 class Racetrack(discrete.DiscreteEnv):
 
     def __init__(self, track=None, char_map=CHAR_MAP, x_vel_limits=None, y_vel_limits=None,
-                 x_accel_limits=None, y_accel_limits=None, max_total_accel=np.inf, seed=None, verbose=False):
+                 x_accel_limits=None, y_accel_limits=None, max_total_accel=2, seed=None, verbose=False):
         # NOTE: If adding arguments, make sure to update .new_instance().  Is there a better way to do this?
         # Defaults:
         if track is None:

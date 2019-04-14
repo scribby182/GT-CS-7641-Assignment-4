@@ -7,7 +7,9 @@ import os
 import pandas as pd
 import re
 import matplotlib as mpl
-mpl.use('Agg')
+# TODO: Reset this
+# mpl.use('Agg')
+import shutil
 
 from os.path import basename
 from matplotlib import pyplot as plt
@@ -293,6 +295,12 @@ def plot_map(map_desc, color_map, fig=None):
             p = plt.Rectangle((x, y), 1, 1, edgecolor='k', linewidth=0.1)
             p.set_facecolor(color_map[map_desc[i, j]])
             ax.add_patch(p)
+
+    ax.axis('off')
+    ax.set_xlim(0, map_desc.shape[1])
+    ax.set_ylim(0, map_desc.shape[0])
+    fig.tight_layout()
+
     return fig
 
 

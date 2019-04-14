@@ -67,14 +67,14 @@ QL_MAX_EPISODE_STEPS = 1000  # maximun steps per episode
 QL_MIN_SUB_THETAS = 15  # num of consecutive episodes with little change before calling it converged
 # List of alpha settings to try (initial, decay_rate, minimum)
 QL_ALPHAS = [
-    {'initial': 0.1, 'decay': 0.0005, 'min': 0.05},
-    # {'initial': 0.3, 'decay': 0.0005, 'min': 0.05},
+    # {'initial': 0.1, 'decay': 0.0005, 'min': 0.05},
+    {'initial': 0.3, 'decay': 0.0005, 'min': 0.05},
     # {'initial': 0.5, 'decay': 0.0005, 'min': 0.05},
 ]
 # List of epsilon settings to try (initial, decay_rate, minimum)
 QL_EPSILONS = [
-    {'initial': 0.25, 'decay': 0.0005, 'min': 0.05},
-    # {'initial': 0.5, 'decay': 0.0005, 'min': 0.05},
+    # {'initial': 0.25, 'decay': 0.0005, 'min': 0.05},
+    {'initial': 0.5, 'decay': 0.0005, 'min': 0.05},
     # {'initial': 0.75, 'decay': 0.0005, 'min': 0.05},
 ]
 QL_Q_INITS = [0, ]  # a list of q-inits to try (can also be 'random')
@@ -202,26 +202,46 @@ if __name__ == '__main__':
         #     'name': 'racetrack_10x10',
         #     'readable_name': 'Racetrack (10x10)',
         # },
-        {
-            'env': environments.get_racetrack(track='10x10_basic',
-                                              x_vel_limits=ENV_SETTINGS['racetrack']['x_vel_limits'],
-                                              y_vel_limits=ENV_SETTINGS['racetrack']['y_vel_limits'],
-                                              x_accel_limits=ENV_SETTINGS['racetrack']['x_accel_limits'],
-                                              y_accel_limits=ENV_SETTINGS['racetrack']['y_accel_limits'],
-                                              max_total_accel=ENV_SETTINGS['racetrack']['max_total_accel']),
-            'name': 'racetrack_10x10_basic',
-            'readable_name': 'Racetrack (10x10) (Basic)',
-        },
         # {
-        #     'env': environments.get_racetrack(track='20x20_basic',
+        #     'env': environments.get_racetrack(track='10x10_basic',
         #                                       x_vel_limits=ENV_SETTINGS['racetrack']['x_vel_limits'],
         #                                       y_vel_limits=ENV_SETTINGS['racetrack']['y_vel_limits'],
         #                                       x_accel_limits=ENV_SETTINGS['racetrack']['x_accel_limits'],
         #                                       y_accel_limits=ENV_SETTINGS['racetrack']['y_accel_limits'],
         #                                       max_total_accel=ENV_SETTINGS['racetrack']['max_total_accel']),
-        #     'name': 'racetrack_20x20_basic',
-        #     'readable_name': 'Racetrack (20x20) (Basic)',
+        #     'name': 'racetrack_10x10_basic',
+        #     'readable_name': 'Racetrack (10x10) (Basic)',
         # },
+        # {
+        #     'env': environments.get_racetrack(track='15x15_basic',
+        #                                       x_vel_limits=ENV_SETTINGS['racetrack']['x_vel_limits'],
+        #                                       y_vel_limits=ENV_SETTINGS['racetrack']['y_vel_limits'],
+        #                                       x_accel_limits=ENV_SETTINGS['racetrack']['x_accel_limits'],
+        #                                       y_accel_limits=ENV_SETTINGS['racetrack']['y_accel_limits'],
+        #                                       max_total_accel=ENV_SETTINGS['racetrack']['max_total_accel']),
+        #     'name': 'racetrack_15x15_basic',
+        #     'readable_name': 'Racetrack (15x15) (Basic)',
+        # },
+        {
+            'env': environments.get_racetrack(track='20x20_basic',
+                                              x_vel_limits=ENV_SETTINGS['racetrack']['x_vel_limits'],
+                                              y_vel_limits=ENV_SETTINGS['racetrack']['y_vel_limits'],
+                                              x_accel_limits=ENV_SETTINGS['racetrack']['x_accel_limits'],
+                                              y_accel_limits=ENV_SETTINGS['racetrack']['y_accel_limits'],
+                                              max_total_accel=ENV_SETTINGS['racetrack']['max_total_accel']),
+            'name': 'racetrack_20x20_basic',
+            'readable_name': 'Racetrack (20x20) (Basic)',
+        },
+        {
+            'env': environments.get_racetrack(track='20x20_all_oil',
+                                              x_vel_limits=ENV_SETTINGS['racetrack']['x_vel_limits'],
+                                              y_vel_limits=ENV_SETTINGS['racetrack']['y_vel_limits'],
+                                              x_accel_limits=ENV_SETTINGS['racetrack']['x_accel_limits'],
+                                              y_accel_limits=ENV_SETTINGS['racetrack']['y_accel_limits'],
+                                              max_total_accel=ENV_SETTINGS['racetrack']['max_total_accel']),
+            'name': 'racetrack_20x20_all_oil',
+            'readable_name': 'Racetrack (20x20) (All Oil)',
+        },
         # {
         #     'env': environments.get_racetrack(track='30x30_basic',
         #                                       x_vel_limits=ENV_SETTINGS['racetrack']['x_vel_limits'],
@@ -252,6 +272,16 @@ if __name__ == '__main__':
         #     'name': 'racetrack_20x10_U',
         #     'readable_name': 'Racetrack (20x10_U)',
         # },
+        # {
+        #     'env': environments.get_racetrack(track='20x15_risky',
+        #                                       x_vel_limits=ENV_SETTINGS['racetrack']['x_vel_limits'],
+        #                                       y_vel_limits=ENV_SETTINGS['racetrack']['y_vel_limits'],
+        #                                       x_accel_limits=ENV_SETTINGS['racetrack']['x_accel_limits'],
+        #                                       y_accel_limits=ENV_SETTINGS['racetrack']['y_accel_limits'],
+        #                                       max_total_accel=ENV_SETTINGS['racetrack']['max_total_accel']),
+        #     'name': 'racetrack_20x15_risky',
+        #     'readable_name': 'Racetrack (20x15 Risky)',
+        # },
     ]
 
     # Set up experiments
@@ -268,58 +298,48 @@ if __name__ == '__main__':
 
     if verbose:
         logger.info("----------")
-    print('\n\n')
     logger.info("Running experiments")
 
     timings = {}  # Dict used to report experiment times (in seconds) at the end of the run
 
     # Run Policy Iteration (PI) experiment
     if args.policy or args.all:
-        print('\n\n')
         run_experiment(experiment_details, experiments.PolicyIterationExperiment, 'PI', verbose, timings,
                        MAX_STEPS['pi'], NUM_TRIALS['pi'], theta=PI_THETA, discount_factors=PI_DISCOUNTS)
-        solvers_run.append('PI')
 
     # Run Value Iteration (VI) experiment
     if args.value or args.all:
-        print('\n\n')
         run_experiment(experiment_details, experiments.ValueIterationExperiment, 'VI', verbose, timings,
                        MAX_STEPS['vi'], NUM_TRIALS['vi'], theta=VI_THETA, discount_factors=VI_DISCOUNTS)
-        solvers_run.append('VI')
 
     # Run Q-Learning (QL) experiment
     if args.ql or args.all:
-        print('\n\n')
         run_experiment(experiment_details, experiments.QLearnerExperiment, 'QL', verbose, timings, MAX_STEPS['ql'],
                        NUM_TRIALS['ql'], max_episodes=QL_MAX_EPISODES, max_episode_steps=QL_MAX_EPISODE_STEPS,
                        min_episodes=QL_MIN_EPISODES, min_sub_thetas=QL_MIN_SUB_THETAS, theta=QL_THETA,
                        discount_factors=QL_DISCOUNTS, alphas=QL_ALPHAS, q_inits=QL_Q_INITS, epsilons=QL_EPSILONS)
-        solvers_run.append('QL')
 
     # Generate plots
     if args.plot:
-        print('\n\n')
         if verbose:
             logger.info("----------")
         logger.info("Plotting results")
         plotting.plot_results(envs)
 
     if args.plot_paths:
-        print('\n\n')
         if verbose:
             logger.info("----------")
         logger.info("Plotting optimal and episodic paths")
-        for solver_name in solvers_run:
-            logger.info(f"Plotting optimal paths for {solver_name}")
+        for solver_name in plotting.TO_PROCESS:
+            logger.info(f"Plotting optimal paths for {solver_name} (if present in output)")
             for this_experiment in experiment_details:
                 plotting.plot_paths(this_experiment, solver_name=solver_name, path_type='optimal')
             if solver_name == "QL":
-                logger.info(f"Plotting episodic paths for {solver_name}")
+                logger.info(f"Plotting episodic paths for {solver_name} (if present in output)")
                 for this_experiment in experiment_details:
                     plotting.plot_paths(this_experiment, solver_name=solver_name, path_type='episode')
 
     # Output timing information
     print('\n\n')
     logger.info(timings)
-    print('\n\n')
 

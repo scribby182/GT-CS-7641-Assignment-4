@@ -13,11 +13,7 @@ CLIFF_WIND_PROB = 0.1
 CLIFF_STEP_REW = -1
 CLIFF_FALL_REW = -100
 CLIFF_GOAL_REW = 100
-RACETRACK_X_VEL_LIMITS = (-2, 2)
-RACETRACK_Y_VEL_LIMITS = (-2, 2)
-RACETRACK_X_ACCEL_LIMITS = (-2, 2)
-RACETRACK_Y_ACCEL_LIMITS = (-2, 2)
-RACETRACK_MAX_TOTAL_ACCEL = 2
+
 RACETRACK_TRACK_DEFAULT = '10x10'
 
 
@@ -170,10 +166,10 @@ def get_windy_cliff_walking_4x12_environment(wind_prob=CLIFF_WIND_PROB, step_rew
     return gym.make('WindyCliffWalking4x12-v0')
 
 
-def get_racetrack(track=RACETRACK_TRACK_DEFAULT, 
-                  x_vel_limits=RACETRACK_X_VEL_LIMITS, y_vel_limits=RACETRACK_Y_VEL_LIMITS,
-                  x_accel_limits=RACETRACK_X_ACCEL_LIMITS, y_accel_limits=RACETRACK_Y_ACCEL_LIMITS,
-                  max_total_accel=RACETRACK_MAX_TOTAL_ACCEL,):
+def get_racetrack(track=None,
+                  x_vel_limits=None, y_vel_limits=None,
+                  x_accel_limits=None, y_accel_limits=None,
+                  max_total_accel=None,):
     kwargs={'track': track, 
             'x_vel_limits': x_vel_limits, 'y_vel_limits': y_vel_limits, 
             'x_accel_limits': x_accel_limits, 'y_accel_limits': y_accel_limits, 
