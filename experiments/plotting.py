@@ -341,34 +341,56 @@ def plot_episode(title, episode, map_desc, color_map, direction_map, annotate_ac
         plot_map(map_desc, color_map, fig=fig)
 
     # print(f'map_desc.shape = {map_desc.shape}')
-    for transition in episode:
+    x = np.zeros(len(episode) + 1)
+    y = np.zeros(len(episode) + 1)
+    # FEATURE: Could do this more directly, but fixing things quickly
+    for i_transition, transition in enumerate(episode):
         if isinstance(transition[0], int):
             # Integer states.  Need to infer location by wrapping into a grid of same shape as the map
             i, j = np.unravel_index(transition[0], map_desc.shape)
-            x = j + 0.5
-            y = map_desc.shape[0] - i - 1 + 0.5
-            i_end, j_end = np.unravel_index(transition[3], map_desc.shape)
-            x_end = j_end + 0.5
-            y_end = map_desc.shape[0] - i_end - 1 + 0.5
+            x[i_transition] = j + 0.5
+            y[i_transition] = map_desc.shape[0] - i - 1 + 0.5
+            # i_end, j_end = np.unravel_index(transition[3], map_desc.shape)
+            # x_end = j_end + 0.5
+            # y_end = map_desc.shape[0] - i_end - 1 + 0.5
         else:
             # Transition traces go from s to s', but shift by +0.5, +0.5 because the map is plotted by the bottom left
             # corner coordinate
-            x = transition[0][0] + 0.5
-            y = transition[0][1] + 0.5
-            x_end = transition[3][0] + 0.5
-            y_end = transition[3][1] + 0.5
+            x[i_transition] = transition[0][0] + 0.5
+            y[i_transition] = transition[0][1] + 0.5
+            # x_end = transition[3][0] + 0.5
+            # y_end = transition[3][1] + 0.5
 
-        # print(f'x,y = {x,y}')
+    if isinstance(episode[-1][3], int):
+        # Integer states.  Need to infer location by wrapping into a grid of same shape as the map
+        i, j = np.unravel_index(episode[-1][3], map_desc.shape)
+        x[-1] = j + 0.5
+        y[-1] = map_desc.shape[0] - i - 1 + 0.5
+        # i_end, j_end = np.unravel_index(transition[3], map_desc.shape)
+        # x_end = j_end + 0.5
+        # y_end = map_desc.shape[0] - i_end - 1 + 0.5
+    else:
+        # Transition traces go from s to s', but shift by +0.5, +0.5 because the map is plotted by the bottom left
+        # corner coordinate
+        x[-1] = episode[-1][3][0] + 0.5
+        y[-1] = episode[-1][3][1] + 0.5
+        # x_end = transition[3][0] + 0.5
+        # y_end = transition[3][1] + 0.5
 
-        # Plot the path
-        ax.plot((x, x_end), (y, y_end), '-o', color=path_color, alpha=path_alpha)
+    # Plot the path
+    ax.plot(x, y, '-o', color=path_color, alpha=path_alpha)
 
+    for i_transition in range(x.shape[0]-1):
+        this_x = x[i_transition]
+        this_x_end = x[i_transition + 1]
+        this_y = y[i_transition]
+        this_y_end = y[i_transition + 1]
         if annotate_velocity:
             # Velocity is next velocity, so pull from the s-prime
             v_xy = transition[3][2:]
 
             # Annotate with the velocity of a move
-            arrow_xy = ((x + x_end) / 2, (y + y_end) / 2)
+            arrow_xy = ((this_x + this_x_end) / 2, (this_y + this_y_end) / 2)
             annotation_xy = (arrow_xy[0] + annotation_offset, arrow_xy[1] + annotation_offset)
             ax.annotate(f'v={str(v_xy)}',
                         xy=arrow_xy,
@@ -381,7 +403,7 @@ def plot_episode(title, episode, map_desc, color_map, direction_map, annotate_ac
 
         if annotate_actions:
             action = transition[1]
-            arrow_xy = (x, y)
+            arrow_xy = (this_x, this_y)
             annotation_xy = (arrow_xy[0] + annotation_offset, arrow_xy[1] + annotation_offset)
             ax.annotate(f'a={str(action)}',
                         xy=arrow_xy,
