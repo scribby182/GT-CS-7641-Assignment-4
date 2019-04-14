@@ -340,13 +340,25 @@ def plot_episode(title, episode, map_desc, color_map, direction_map, annotate_ac
     if plot_the_map:
         plot_map(map_desc, color_map, fig=fig)
 
+    # print(f'map_desc.shape = {map_desc.shape}')
     for transition in episode:
-        # Transition traces go from s to s', but shift by +0.5, +0.5 because the map is plotted by the bottom left
-        # corner coordinate
-        x = transition[0][0] + 0.5
-        y = transition[0][1] + 0.5
-        x_end = transition[3][0] + 0.5
-        y_end = transition[3][1] + 0.5
+        if isinstance(transition[0], int):
+            # Integer states.  Need to infer location by wrapping into a grid of same shape as the map
+            i, j = np.unravel_index(transition[0], map_desc.shape)
+            x = j + 0.5
+            y = map_desc.shape[0] - i - 1 + 0.5
+            i_end, j_end = np.unravel_index(transition[3], map_desc.shape)
+            x_end = j_end + 0.5
+            y_end = map_desc.shape[0] - i_end - 1 + 0.5
+        else:
+            # Transition traces go from s to s', but shift by +0.5, +0.5 because the map is plotted by the bottom left
+            # corner coordinate
+            x = transition[0][0] + 0.5
+            y = transition[0][1] + 0.5
+            x_end = transition[3][0] + 0.5
+            y_end = transition[3][1] + 0.5
+
+        # print(f'x,y = {x,y}')
 
         # Plot the path
         ax.plot((x, x_end), (y, y_end), '-o', color=path_color, alpha=path_alpha)
